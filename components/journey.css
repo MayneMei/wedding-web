@@ -326,23 +326,9 @@
 .journey-scenery-west { width: clamp(155px,21vw,330px); left: 2%; top: 18%; transform: rotate(-10deg); }
 .journey-scenery-center { left: 34%; bottom: 11%; }
 .journey-scenery-east { right: 4%; bottom: 16%; transform: scaleX(-1); }
-.journey-beijing {
-  position: absolute;
-  left: 37.5%;
-  top: 26%;
-  width: clamp(46px,7vw,89px);
-  margin: 0;
-  text-align: center;
-  color: var(--pink);
-  font: italic 16px Georgia,serif;
-  transform: rotate(-9deg);
-  pointer-events: none;
-}
-.journey-beijing img { width: 100%; display: block; margin-bottom: 4px; }
 .journey-map-footer { background: #fdfbf3; border-color: var(--olive); }
 @media (max-width: 640px) {
   .journey-sticker { width: 184px; height: min(25vh,169px); }
-  .journey-beijing { top: 27%; }
 }
 @media (max-height: 660px) and (min-width: 641px) {
   .journey-sticker { height: 22vh; }

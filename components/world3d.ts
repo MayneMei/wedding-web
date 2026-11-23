@@ -222,12 +222,6 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     pin.position.set(p.x, .25, p.z);
     scene.add(sticker, shade, pin);
   });
-  const beijing = standee("/waypoint-beijing.webp", 7);
-  const bj = toWorld({ x: 38.5, y: 33 });
-  beijing.position.set(bj.x, 0, bj.z);
-  const bjShade = blob(3);
-  bjShade.position.set(bj.x, .04, bj.z + .3);
-  scene.add(beijing, bjShade);
 
   // ---------- Scenery: trees, flowers, clouds ----------
   const rand = seeded(20270423);
@@ -238,7 +232,6 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   for (let tries = 0, placed = 0; tries < 900 && placed < 70; tries++) {
     const x = rand() * (W + 4) - 2, z = rand() * (D + 4) - 2;
     if (avoid.some((a) => Math.hypot(a.x - x, a.z - z) < ("seg" in a ? 4.2 : 9.5))) continue;
-    if (Math.hypot(bj.x - x, bj.z - z) < 5) continue;
     placed++;
     const tree = new THREE.Group();
     const scale = .75 + rand() * .55;

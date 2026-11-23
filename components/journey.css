@@ -1,17 +1,23 @@
 @font-face {
+  font-family: "DM Sans";
+  src: url("/fonts/dm-sans-latin.woff2") format("woff2");
+  font-weight: 100 1000;
+  font-display: swap;
+}
+@font-face {
   font-family: "Wedding Script";
   src: url("/wedding-script.otf") format("opentype");
   font-display: swap;
 }
 .journey-root {
-  --green: #435941;
-  --ink: #35485c;
-  --pink: #9a3e60;
-  --paper: #faf2dd;
+  --green: #3d3f24;
+  --ink: #3d3f24;
+  --pink: #9b3358;
+  --paper: #fefaf2;
   min-height: 100svh;
   position: relative;
   color: var(--green);
-  background: radial-gradient(ellipse at 20% 30%, #fcdf9d70, transparent 55%), var(--paper);
+  background: radial-gradient(ellipse at 20% 30%, #f9c95c70, transparent 55%), var(--paper);
   font-family: var(--sans);
 }
 .journey-root h1 {
@@ -51,37 +57,15 @@
   text-decoration: none;
   font-weight: 650;
 }
-.journey-button:hover { background: #4f6347; }
+.journey-button:hover { background: #55572f; }
 .journey-link { border: 0; background: none; color: var(--green); text-decoration: underline; margin-top: 12px; }
 .journey-root .journey-kicker {
   font: 700 13px/1.3 var(--sans);
   letter-spacing: .11em;
   text-transform: uppercase;
-  color: #6f4f38;
+  color: #5e4922;
   margin-bottom: 12px;
 }
-.journey-welcome {
-  min-height: 100svh;
-  display: grid;
-  grid-template-columns: minmax(0,.92fr) minmax(0,1fr);
-  gap: clamp(34px,7vw,100px);
-  align-items: center;
-  width: min(1100px,88vw);
-  margin: auto;
-  padding: 66px 0 52px;
-}
-.journey-welcome h1 { color: var(--pink); font-size: clamp(80px,12.8vw,162px); letter-spacing: -.052em; }
-.journey-welcome h1 span { color: #8d713d; font-size: .62em; }
-.journey-event { font: 18px/1.48 Georgia,serif; }
-.journey-welcome .journey-button + p { margin-top: 12px; font-size: 14px; }
-.journey-cover {
-  width: min(100%,510px);
-  transform: rotate(2deg);
-  background: #fffaf0;
-  box-shadow: 4px 9px 24px #74654a42;
-  padding: 9px;
-}
-.journey-cover img { display: block; width: 100%; height: auto; }
 .journey-choose, .journey-end {
   min-height: 100svh;
   text-align: center;
@@ -104,7 +88,7 @@
   box-shadow: 4px 5px #dab87565;
 }
 .journey-characters button:hover { background: #f7e6b6; }
-.journey-characters strong { font: 700 clamp(20px,3vw,29px) Georgia, serif; }
+.journey-characters strong { font: 400 clamp(34px,4vw,46px)/1 "Wedding Script", Georgia, serif; color: var(--pink); }
 .journey-characters span { margin-top: 6px; font-size: 14px; color: var(--pink); }
 .journey-cat-art { width: 100%; height: auto; display: block; }
 .journey-characters .journey-cat-art {
@@ -120,7 +104,7 @@
   min-height: 460px;
   overflow: hidden;
   text-align: center;
-  background: #faf2dd;
+  background: #fefaf2;
 }
 .journey-map-heading {
   position: absolute;
@@ -128,7 +112,7 @@
   z-index: 3;
   padding: 20px 82px 29px;
   pointer-events: none;
-  background: linear-gradient(#faf2dd, #faf2dde6 65%, transparent);
+  background: linear-gradient(#fefaf2, #fefaf2e6 65%, transparent);
 }
 .journey-map h1 { font-size: clamp(43px,6.2vw,90px); margin-bottom: 4px; }
 .journey-map p { margin: 0; }
@@ -141,7 +125,7 @@
   height: 100%;
   width: max(100%,950px);
   background: radial-gradient(circle, #b395704f 1px, transparent 1.4px) 4px 5px/19px 19px,
-    radial-gradient(ellipse at 36% 20%, #fff8e6, transparent 67%), #faf2dd;
+    radial-gradient(ellipse at 36% 20%, #fff8e6, transparent 67%), #fefaf2;
 }
 .journey-board::before {
   content: "";
@@ -174,7 +158,7 @@
   border: 0;
   background: none;
   color: var(--ink);
-  font: 700 clamp(14px,1.4vw,21px)/1.13 Georgia,serif;
+  font: 700 clamp(13px,1.3vw,18px)/1.13 var(--sans);
   padding: 0;
   cursor: pointer;
 }
@@ -202,20 +186,20 @@
   height: 34px;
   color: #fff9e7;
   border: 2px solid #fff2cf;
-  background: #586e50;
-  box-shadow: 0 0 0 2px #586e50;
+  background: #5e6038;
+  box-shadow: 0 0 0 2px #5e6038;
 }
 .journey-stop-name {
   white-space: nowrap;
   padding: 4px 9px;
-  border: 2px solid #516781;
+  border: 2px solid #5e4922;
   border-radius: 6px 8px 6px 7px;
   background: #fff7e1;
   box-shadow: 2px 3px 0 #916a1831;
 }
 .journey-stop[aria-current] .journey-pin { background: var(--pink); box-shadow: 0 0 0 2px var(--pink); }
-.journey-stop[aria-current] .journey-stop-name { border-color: var(--pink); color: #843a54; background: #fff4ca; }
-.journey-stop[data-complete="true"] .journey-pin { background: #394d33; }
+.journey-stop[aria-current] .journey-stop-name { border-color: var(--pink); color: #6e2240; background: #fff4ca; }
+.journey-stop[data-complete="true"] .journey-pin { background: #3d3f24; }
 .journey-traveler {
   width: clamp(77px,8vw,129px);
   position: absolute;
@@ -262,9 +246,9 @@
 .journey-dialog::backdrop { background: #26332675; }
 .journey-dialog-sticker { float: right; width: clamp(68px,18vw,112px); height: auto; max-height: 98px; object-fit: contain; margin: 0 0 8px 12px; }
 .journey-dialog label:first-of-type { clear: both; }
-.journey-dialog h2 { font: 700 clamp(25px,6vw,37px) Georgia,serif; margin: 0 0 8px; }
+.journey-dialog h2 { font: 400 clamp(38px,8vw,54px)/1 "Wedding Script", Georgia, serif; margin: 0 0 8px; color: var(--pink); }
 .journey-dialog label { display: grid; gap: 5px; margin: 13px 0; font-weight: 600; }
-.journey-dialog input,.journey-dialog select,.journey-dialog textarea { width: 100%; padding: 9px; background: white; border: 1px solid #8d9875; border-radius: 3px; color: #263b29; }
+.journey-dialog input,.journey-dialog select,.journey-dialog textarea { width: 100%; padding: 9px; background: white; border: 1px solid #8d9875; border-radius: 3px; color: #3d3f24; }
 .journey-dialog-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 19px; }
 .journey-review { padding: 10px; margin: 12px 0; background: #f1e8cf; }
 .journey-review div + div { margin-top: 6px; }
@@ -274,9 +258,6 @@
 .journey-end-cats { display: flex; align-items: end; gap: 7px; width: min(70vw,370px); margin-bottom: 21px; }
 .journey-end-cats img { width: calc(50% - 4px); }
 @media(max-width:640px) {
-  .journey-welcome { grid-template-columns: 1fr; text-align: center; gap: 23px; justify-items: center; }
-  .journey-welcome h1 { font-size: clamp(75px,18vw,108px); }
-  .journey-cover { max-width: 288px; }
   .journey-map-heading { padding: 65px 20px 19px; }
   .journey-board { width: max(100%,1060px); }
   .journey-sticker { width: 158px; height: min(22vh,150px); }
@@ -286,22 +267,29 @@
 }
 @media(prefers-reduced-motion:reduce) { .journey-traveler.is-walking img { animation: none; } }
 
-/* Wedding palette sampled from Maggie and Mayne’s mood board. */
+/* Palette taken straight from Maggie and Mayne’s mood board:
+   natural raw colors (linen, cream, sage) + one vibrant color (berry), with orange used sparingly for energy,
+   and desaturated accents (pistachio, butter, terracotta, umber). */
 .journey-root {
-  --paper: #fdfbf3;
-  --pink: #8f3a57;
-  --ink: #384c62;
-  --green: #404a33;
-  --olive: #9a9c72;
-  --linen: #dad3c9;
-  --coral: #ed7349;
-  --gold: #f1cb6d;
-  background: radial-gradient(ellipse at 20% 30%, #dad3c977, transparent 55%), var(--paper);
+  --linen: #ddd3c9;
+  --paper: #fefaf2;
+  --olive: #9b9c6c;
+  --pink: #9b3358;
+  --berry-dark: #6e2240;
+  --coral: #ff6a3d;
+  --pistachio: #bebc81;
+  --gold: #f9c95c;
+  --terracotta: #b07557;
+  --umber: #5e4922;
+  --green: #3d3f24;
+  --ink: #3d3f24;
+  --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: radial-gradient(ellipse at 20% 30%, #ddd3c977, transparent 55%), var(--paper);
 }
 .journey-button { background: var(--pink); border-color: var(--pink); }
-.journey-button:hover { background: #772f49; }
+.journey-button:hover { background: #6e2240; }
 .journey-map, .journey-board { background-color: var(--paper); }
-.journey-map-heading { background: linear-gradient(#fdfbf3, #fdfbf3dc 65%, transparent); }
+.journey-map-heading { background: linear-gradient(#fefaf2, #fefaf2dc 65%, transparent); }
 .journey-board {
   background-image: radial-gradient(circle, #a8785d65 1px, transparent 1.4px),
     radial-gradient(ellipse at 20% 24%, #dad3c965, transparent 57%),
@@ -314,7 +302,7 @@
   width: clamp(150px,18.5vw,300px);
   height: min(28vh,245px);
 }
-.journey-stop[aria-current] .journey-stop-name { background: #f1cb6d55; }
+.journey-stop[aria-current] .journey-stop-name { background: #f9c95c55; }
 .journey-scenery {
   position: absolute;
   display: block;
@@ -326,7 +314,7 @@
 .journey-scenery-west { width: clamp(155px,21vw,330px); left: 2%; top: 18%; transform: rotate(-10deg); }
 .journey-scenery-center { left: 34%; bottom: 11%; }
 .journey-scenery-east { right: 4%; bottom: 16%; transform: scaleX(-1); }
-.journey-map-footer { background: #fdfbf3; border-color: var(--olive); }
+.journey-map-footer { background: #fefaf2; border-color: var(--olive); }
 @media (max-width: 640px) {
   .journey-sticker { width: 184px; height: min(25vh,169px); }
 }
@@ -334,26 +322,6 @@
   .journey-sticker { height: 22vh; }
 }
 
-.journey-welcome {
-  position:relative;width:100%;min-height:100svh;display:grid;
-  grid-template-columns: minmax(240px,30%) 1fr;align-items:center;gap:0;
-  padding:64px 0 60px 5vw;
-  background:var(--paper) url('/invitation-backdrop.webp') right center / min(66vw,116svh) auto no-repeat;
-}
-.welcome-note {text-align:left;max-width:27rem;}
-.welcome-note h1 {font-size:clamp(55px,6vw,90px);line-height:1.05;}
-.welcome-note p:first-child {color:var(--pink);font:italic 18px Georgia,serif;}
-.welcome-note p {line-height:1.55;text-wrap:pretty;}
-.welcome-note .journey-event {font-size:16px;}
-@media(max-width:700px) {
-  .journey-welcome {
-    grid-template-columns:1fr;align-content:end;justify-items:center;padding:0 20px 58px;
-    background-size:auto min(51svh,79vw);background-position:center max(35px,6svh);
-  }
-  .welcome-note {text-align:center;max-width:34ch;}
-  .welcome-note h1 {font-size:clamp(43px,11vw,60px);margin:4px 0 10px;}
-  .welcome-note p {margin:0 0 8px;}
-}
 .journey-open-arrow {
   position:absolute;bottom:max(5px,env(safe-area-inset-bottom));left:50%;
   transform:translateX(-50%);display:grid;place-items:center;width:68px;height:48px;
@@ -362,7 +330,6 @@
 .journey-open-arrow:focus-visible {outline:2px solid currentColor;outline-offset:1px;border-radius:50%;}
 .journey-open-arrow svg {transition:transform .2s;}
 .journey-open-arrow:hover svg {transform:translateX(4px);}
-.journey-cover-notice {position:absolute;left:5%;right:5%;bottom:54px;text-align:center;background:var(--paper);}
 .journey-board,.journey-map,.journey-map-heading {background:var(--paper);}
 .journey-board::before {content:none;}
 .journey-map-heading {background:transparent;}
@@ -372,14 +339,178 @@
 .journey-traveler img {scale:var(--face,1) 1;}
 .game-item,.game-dock,.game-yarn {position:absolute;transform:translate(-50%,-50%);z-index:2;display:grid;place-items:center;}
 .game-item,.game-dock {border-radius:50%;cursor:pointer;}
-.game-item {background:var(--paper);width:44px;height:44px;border:2px dashed var(--pink);font-size:24px;box-shadow:0 0 0 5px #f1cb6d66;}
+.game-item {background:var(--paper);width:44px;height:44px;border:2px dashed var(--pink);font-size:24px;box-shadow:0 0 0 5px #f9c95c66;}
 .game-dock {height:34px;width:34px;border:2px solid var(--paper);background:var(--pink);color:white;font-size:22px;}
 .game-yarn {pointer-events:none;font-size:29px;}
 .journey-traveler {z-index:3;}
 .game-hud {flex-direction:column;gap:4px;padding:8px 20px;pointer-events:none;}
 .passport {display:flex;gap:5px;}
 .passport span {display:grid;place-items:center;border:1px dashed var(--olive);width:27px;height:27px;border-radius:50%;color:var(--olive);}
-.passport .stamped {border:1px solid var(--pink);background:#f1cb6d55;}
+.passport .stamped {border:1px solid var(--pink);background:#f9c95c55;}
 @media(max-width:700px) {
  .journey-map-heading p {max-width:35ch;}
 }
+
+/* ============ Home: the illustration is the whole page ============ */
+.journey-welcome {
+  --art-paper: #faf4f0;
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  text-align: center;
+  padding: clamp(58px, 7svh, 76px) 20px max(28px, env(safe-area-inset-bottom));
+  background: var(--art-paper);
+}
+.welcome-art {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  height: min(78svh, 64vw);
+  width: auto;
+  max-width: none;
+  /* Melt the illustration into the page: soft top edge (where the heart is cropped) and soft sides. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 16%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent, #000 16%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+  mask-composite: intersect;
+  animation: welcome-art-in 1.2s cubic-bezier(.2, .7, .2, 1) both;
+}
+@keyframes welcome-art-in { from { opacity: 0; scale: 1.03; } }
+.welcome-note { position: relative; max-width: 46rem; animation: welcome-up .9s .15s cubic-bezier(.2, .7, .2, 1) both; }
+.welcome-note::before {
+  /* A soft glow of page color so the names stay readable over the fireworks. */
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -10% -6% -8%;
+  background: radial-gradient(closest-side, #faf4f0f2 45%, #faf4f099 70%, transparent);
+}
+.welcome-kicker {
+  margin: 0 0 6px !important;
+  font: 600 13px/1.2 var(--sans);
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: var(--umber);
+}
+.journey-root .welcome-note h1 {
+  margin: 0;
+  color: var(--pink);
+  font-size: clamp(64px, 8.4vw, 124px);
+  line-height: .95;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.welcome-note h1 span { color: var(--terracotta); font-size: .72em; padding: 0 .04em; }
+.welcome-when {
+  margin: 10px 0 0 !important;
+  font: 500 clamp(14px, 1.3vw, 16px)/1.5 var(--sans);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.welcome-when i { font-style: normal; color: var(--pink); }
+.welcome-break { display: none; }
+.game-title-actions {
+  grid-row: 3;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  animation: welcome-up .9s .35s cubic-bezier(.2, .7, .2, 1) both;
+}
+@keyframes welcome-up { from { opacity: 0; translate: 0 14px; } }
+.game-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pink);
+  color: var(--paper);
+  font: 600 clamp(16px, 1.5vw, 18px)/1 var(--sans);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 18px 30px 18px 34px;
+  box-shadow: 0 0 0 6px #faf4f0d9, 0 14px 30px #6e224040;
+  transition: background .2s, transform .2s, box-shadow .2s;
+}
+.game-start span { display: inline-block; transition: transform .2s; font-size: 1.15em; }
+.game-start:hover { background: var(--berry-dark); transform: translateY(-2px); }
+.game-start:hover span { transform: translateX(4px); }
+.game-start:active { transform: translateY(1px); }
+.game-title-tag, .game-best {
+  margin: 0 !important;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #faf4f0d9;
+  font: 500 14px/1.4 var(--sans);
+  color: var(--ink);
+}
+.game-best b { color: var(--pink); font-weight: 700; }
+.journey-cover-notice {
+  grid-row: 2;
+  align-self: center;
+  margin: 0 !important;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #faf4f0ee;
+  color: var(--berry-dark);
+  font-weight: 600;
+}
+@media (max-width: 700px) {
+  .journey-welcome { padding-top: 70px; }
+  /* On phones the art is wider than the screen: size it so both cats stay in view, and fade its bottom
+     edge into the page under the button. */
+  .welcome-art {
+    top: clamp(150px, 22svh, 196px);
+    bottom: auto;
+    height: min(109vw, 52svh);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
+  }
+  .journey-root .welcome-note h1 { font-size: clamp(46px, 13.5vw, 64px); }
+  .welcome-kicker { font-size: 11px; letter-spacing: .22em; }
+  .welcome-when { font-size: 12px; letter-spacing: .12em; }
+  .welcome-when i { display: none; }
+  .welcome-break { display: inline; }
+  .game-title-tag { font-size: 13px; max-width: 32ch; }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+  .welcome-art { height: 100svh; }
+  .journey-root .welcome-note h1 { font-size: clamp(40px, 9svh, 64px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-art, .welcome-note, .game-title-actions { animation: none; }
+}
+
+/* ============ Shared chrome in the mood-board palette ============ */
+.journey-root { -webkit-font-smoothing: antialiased; }
+.journey-back, .journey-language {
+  border: 1px solid #ddd3c9;
+  background: #fefaf2d9;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font: 500 14px/1 var(--sans);
+  letter-spacing: .02em;
+}
+.journey-back:hover, .journey-language:hover { border-color: var(--olive); background: var(--paper); }
+.journey-button { border-radius: 999px; padding: 12px 24px; font-weight: 600; letter-spacing: .02em; }
+.journey-choose > small { color: var(--umber); font-size: 14px; }
+.journey-characters button { background: var(--paper); border-color: #ddd3c9; box-shadow: 0 10px 30px #5e492214; }
+.journey-characters button:hover { background: #fffdf8; border-color: var(--olive); box-shadow: 0 16px 36px #5e492224; }
+.journey-characters span { color: var(--umber); letter-spacing: .08em; text-transform: uppercase; font-size: 12px; font-weight: 600; }
+.journey-choose h1, .journey-end h1 { color: var(--pink); }
+.journey-dialog { background: var(--paper); border: 1px solid #ddd3c9; border-radius: 18px; box-shadow: 0 24px 60px #3d3f2433; color: var(--ink); }
+.journey-dialog::backdrop { background: #3d3f2466; backdrop-filter: blur(2px); }
+.journey-dialog input, .journey-dialog select, .journey-dialog textarea { border-color: #ddd3c9; border-radius: 10px; color: var(--ink); }
+.journey-dialog input:focus, .journey-dialog select:focus, .journey-dialog textarea:focus { outline: 2px solid var(--olive); outline-offset: 1px; }
+.journey-root .journey-kicker { color: var(--terracotta); }
+.journey-review { background: #f3ede4; border-radius: 10px; }

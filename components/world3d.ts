@@ -39,7 +39,7 @@ const angleTo = (from: number, to: number) => Math.atan2(Math.sin(to - from), Ma
 
 const W = 100, D = 100 * DEPTH;
 const OUTLINE = 0x384c62;
-const PAPER = "#fdfbf3";
+const PAPER = "#fefaf2";
 
 function toonRamp() {
   const ramp = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
@@ -127,8 +127,8 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#f4ead6");
-  scene.fog = new THREE.Fog("#f4ead6", 110, 230);
+  scene.background = new THREE.Color("#efe7dc");
+  scene.fog = new THREE.Fog("#efe7dc", 110, 230);
   const camera = new THREE.PerspectiveCamera(38, 1, .5, 400);
 
   const ramp = toonRamp();
@@ -196,9 +196,9 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   top.rotation.x = -Math.PI / 2;
   top.position.set(W / 2, 0, D / 2);
   top.receiveShadow = true;
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(W + 8, 3, D + 8), toon("#dcc59a"));
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(W + 8, 3, D + 8), toon("#d9c7b3"));
   slab.position.set(W / 2, -1.52, D / 2);
-  const table = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: "#eadcbd" }));
+  const table = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: "#e6ddd1" }));
   table.rotation.x = -Math.PI / 2;
   table.position.set(W / 2, -3.1, D / 2);
   table.receiveShadow = true;
@@ -220,7 +220,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   dots.forEach((dot, i) => {
     const big = dot.seg === setup.stage ? 1.35 : 1;
     trail.setMatrixAt(i, m4.compose(new THREE.Vector3(dot.x, .05, dot.z), q, new THREE.Vector3(big, big, big)));
-    trail.setColorAt(i, new THREE.Color(dot.seg < setup.stage ? "#777e58" : dot.seg === setup.stage ? "#8f3a57" : "#b9b897"));
+    trail.setColorAt(i, new THREE.Color(dot.seg < setup.stage ? "#7d7f52" : dot.seg === setup.stage ? "#9b3358" : "#c4c29a"));
   });
   scene.add(trail);
 
@@ -237,7 +237,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
       shade.position.set(p.x, .04, p.z - 2.2);
       scene.add(sticker, shade);
     }
-    const color = i < setup.stage ? "#394d33" : i === setup.stage ? "#8f3a57" : "#586e50";
+    const color = i < setup.stage ? "#5e6038" : i === setup.stage ? "#9b3358" : "#9b9c6c";
     const pin = outlined(new THREE.CylinderGeometry(1.15, 1.25, .5, 28), toon(color), 1.12);
     pin.position.set(p.x, .25, p.z);
     scene.add(pin);
@@ -250,12 +250,12 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     const sand = outlined(new THREE.SphereGeometry(1, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon("#f2dfb4"), 1.03);
     sand.scale.set(7.2, .9, 3.3);
     const sun = new THREE.Mesh(new THREE.SphereGeometry(3, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2),
-      toon("#ec7a4f", { emissive: "#8a2d10", emissiveIntensity: .35 }));
+      toon("#ff6a3d", { emissive: "#8a2d10", emissiveIntensity: .3 }));
     sun.position.set(4.2, 0, -2.6);
     sun.scale.set(1, 1, .45);
     g.add(sand, sun);
     for (let k = 0; k < 3; k++) {
-      const ray = new THREE.Mesh(new THREE.BoxGeometry(.28, 1.3, .2), toon("#f1cb6d", { emissive: "#7a5a00", emissiveIntensity: .4 }));
+      const ray = new THREE.Mesh(new THREE.BoxGeometry(.28, 1.3, .2), toon("#f9c95c", { emissive: "#7a5a00", emissiveIntensity: .4 }));
       const a = .35 + k * .38;
       ray.position.set(4.2 + Math.cos(a) * 4.3, Math.sin(a) * 4.3, -2.6);
       ray.rotation.z = a - Math.PI / 2;
@@ -270,7 +270,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     });
     const sparkleGeo = starGeometry();
     ([[-6.2, 7.8, .45], [6.8, 5.6, .35]] as const).forEach(([x, y, size]) => {
-      const sparkle = new THREE.Mesh(sparkleGeo, toon("#f2b51c", { emissive: "#6b4a00", emissiveIntensity: .5 }));
+      const sparkle = new THREE.Mesh(sparkleGeo, toon("#f9c95c", { emissive: "#6b4a00", emissiveIntensity: .45 }));
       sparkle.position.set(x, y, -1);
       sparkle.scale.setScalar(size);
       g.add(sparkle);
@@ -291,7 +291,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   const keepClear = [setup.start, setup.item, setup.bonus, setup.goal, ...setup.hearts, ...setup.powers.map((p) => p.pos), ...setup.hazards.map((h) => h.pos)];
   const avoid = [...dots, ...keepClear, ...setup.stops.map((s) => toWorld(s)), ...setup.stops.map((s) => { const p = toWorld(s); return { x: p.x, z: p.z - 4 }; }),
     ...(plaza ? [plaza] : [])];
-  const greens = ["#7fa86a", "#6e9a5e", "#9ab872", "#86a36b"];
+  const greens = ["#9b9c6c", "#8a9061", "#b4b47c", "#a2a571"];
   const trunkMat = toon("#8a5a3c");
   const canopies: THREE.Object3D[] = [];
   let scenicPalms = 0;
@@ -326,7 +326,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     tree.rotation.y = rand() * Math.PI;
     scene.add(tree);
   }
-  const petals = ["#f2a7b8", "#fff4c2", "#f6c27a", "#ffffff"];
+  const petals = ["#e7a4ba", "#f9c95c", "#e2a184", "#fefaf2"];
   const flowerGeo = new THREE.SphereGeometry(.22, 6, 4);
   for (let i = 0; i < 90; i++) {
     const x = rand() * W, z = rand() * D;
@@ -354,7 +354,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
 
   // ---------- Collectibles ----------
   const heartGeo = heartGeometry();
-  const heartMat = toon("#e0405e", { emissive: "#5a0f20", emissiveIntensity: .25 });
+  const heartMat = toon("#c2416b", { emissive: "#4a0f22", emissiveIntensity: .25 });
   const hearts = setup.hearts.map((pos) => {
     const g = new THREE.Group();
     const h = outlined(heartGeo, heartMat, 1.12);
@@ -366,7 +366,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     return g;
   });
   const bonus = new THREE.Group();
-  const star = outlined(starGeometry(), toon("#f2b51c", { emissive: "#6b4a00", emissiveIntensity: .35 }), 1.12);
+  const star = outlined(starGeometry(), toon("#f9c95c", { emissive: "#6b4a00", emissiveIntensity: .3 }), 1.12);
   star.position.y = 1.9;
   bonus.add(star, blob(1));
   bonus.position.set(setup.bonus.x, 0, setup.bonus.z);
@@ -375,7 +375,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     const g = new THREE.Group();
     const icon = emojiSprite(power.kind === "speed" ? "🐟" : power.kind === "shield" ? "🌿" : "💐", 2.1);
     icon.position.y = .75;
-    const tint = power.kind === "speed" ? "#7cc0f0" : power.kind === "shield" ? "#8fd19a" : "#f2a7b8";
+    const tint = power.kind === "speed" ? "#f9c95c" : power.kind === "shield" ? "#bebc81" : "#e7a4ba";
     const bubble = new THREE.Mesh(new THREE.SphereGeometry(1.55, 20, 14),
       new THREE.MeshToonMaterial({ color: tint, gradientMap: ramp, transparent: true, opacity: .32, depthWrite: false }));
     bubble.position.y = 1.8;
@@ -386,7 +386,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   });
   const item = new THREE.Group();
   const itemIcon = emojiSprite(setup.itemIcon, 3);
-  const halo = new THREE.Mesh(new THREE.TorusGeometry(1.7, .16, 8, 40), toon("#f1cb6d", { emissive: "#7a5a00", emissiveIntensity: .4 }));
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(1.7, .16, 8, 40), toon("#f9c95c", { emissive: "#7a5a00", emissiveIntensity: .4 }));
   halo.rotation.x = -Math.PI / 2;
   halo.position.y = .12;
   item.add(itemIcon, halo, blob(1.3));
@@ -397,13 +397,13 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   const flag = new THREE.Group();
   const pole = outlined(new THREE.CylinderGeometry(.13, .13, 6, 8), toon("#5b4a3b"), 1.25);
   pole.position.y = 3;
-  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.8, 8, 1), toon("#8f3a57", { side: THREE.DoubleSide }));
+  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.8, 8, 1), toon("#9b3358", { side: THREE.DoubleSide }));
   cloth.castShadow = true;
   const clothPivot = new THREE.Group();
   cloth.position.x = 1.4;
   clothPivot.add(cloth);
   clothPivot.position.y = 5.1;
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6, .14, 8, 48), toon("#8f3a57"));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6, .14, 8, 48), toon("#9b3358"));
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = .1;
   flag.add(pole, clothPivot, ring);
@@ -425,9 +425,9 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     ctx.clearRect(0, 0, c.width, c.height);
     ctx.fillStyle = "#384c62";
     ctx.beginPath(); ctx.roundRect(0, 0, c.width, c.height, 8); ctx.fill();
-    ctx.fillStyle = "#f1ece0";
+    ctx.fillStyle = "#f3ede4";
     ctx.beginPath(); ctx.roundRect(3, 3, c.width - 6, c.height - 6, 5); ctx.fill();
-    ctx.fillStyle = hp / max > .5 ? "#5aa55f" : hp / max > .25 ? "#f2b51c" : "#e0405e";
+    ctx.fillStyle = hp / max > .5 ? "#8d9a5a" : hp / max > .25 ? "#f9c95c" : "#c2416b";
     if (hp > 0) { ctx.beginPath(); ctx.roundRect(3, 3, (c.width - 6) * hp / max, c.height - 6, 5); ctx.fill(); }
     texture.needsUpdate = true;
   }
@@ -508,7 +508,7 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     swipe.add(claw);
   });
   const swipeEdge = new THREE.Mesh(new THREE.RingGeometry(1.9, 4.5, 24, 1, -1.05, 2.1),
-    new THREE.MeshBasicMaterial({ color: "#e0405e", transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+    new THREE.MeshBasicMaterial({ color: "#9b3358", transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
   swipeEdge.rotation.x = -Math.PI / 2;
   swipeEdge.position.y = -.05;
   swipe.add(swipeEdge);
@@ -527,11 +527,11 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   const cat = new THREE.Group();
   const catSprite = standee(setup.catImg, 4.2);
   const shield = new THREE.Mesh(new THREE.SphereGeometry(2.8, 24, 16),
-    new THREE.MeshToonMaterial({ color: "#8fd19a", gradientMap: ramp, transparent: true, opacity: .3, depthWrite: false }));
+    new THREE.MeshToonMaterial({ color: "#bebc81", gradientMap: ramp, transparent: true, opacity: .35, depthWrite: false }));
   shield.position.y = 2.4;
   const carry = emojiSprite(setup.itemIcon, 2.2);
   carry.position.y = 4.8;
-  const speedRing = new THREE.Mesh(new THREE.TorusGeometry(2.2, .12, 6, 30), toon("#f1cb6d"));
+  const speedRing = new THREE.Mesh(new THREE.TorusGeometry(2.2, .12, 6, 30), toon("#f9c95c"));
   speedRing.rotation.x = -Math.PI / 2;
   speedRing.position.y = .12;
   cat.add(catSprite, blob(2.4), shield, carry, speedRing);
@@ -623,8 +623,10 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
         if (hz.bar) hz.bar.visible = false;
         if (hz.pigeon) {
           // Defeated pigeons just give up and fly off.
-          hz.body.position.y = d * d * 9 + d * 4;
-          hz.body.position.z = d * 8;
+          // Flap up and away from the camera, toward the back of the map.
+          hz.body.position.y = d * 3 + d * d * 2;
+          hz.body.position.z = -d * 11;
+          hz.body.rotation.y = Math.PI;
           hz.shadow.scale.setScalar(Math.max(.01, 1.6 - d));
           hz.pigeon.animate(time, 0, 1);
           hz.group.visible = d < 2.2;

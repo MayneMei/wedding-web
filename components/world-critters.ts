@@ -201,7 +201,7 @@ export function makeVacuum(kit: Kit, scale = 1, crowned = false): Vacuum {
   let crown: THREE.Group | undefined;
   if (crowned) {
     crown = new THREE.Group();
-    const gold = toon("#f2b51c", { emissive: "#6b4a00", emissiveIntensity: .35 });
+    const gold = toon("#f9c95c", { emissive: "#6b4a00", emissiveIntensity: .3 });
     const band = outlined(new THREE.CylinderGeometry(.62, .62, .32, 20, 1, true), gold, 1.06);
     at(band, 0, .16, 0);
     crown.add(band);
@@ -209,7 +209,7 @@ export function makeVacuum(kit: Kit, scale = 1, crowned = false): Vacuum {
       const a = k / 5 * Math.PI * 2;
       const spike = new THREE.Mesh(new THREE.ConeGeometry(.16, .45, 6), gold);
       at(spike, Math.sin(a) * .58, .52, Math.cos(a) * .58);
-      const gem = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), toon(k % 2 ? "#e0405e" : "#4b9ad6"));
+      const gem = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), toon(k % 2 ? "#9b3358" : "#ff6a3d"));
       at(gem, Math.sin(a) * .63, .2, Math.cos(a) * .63);
       crown.add(spike, gem);
     }
@@ -239,8 +239,8 @@ export function makeYarn(kit: Kit): Yarn {
   const group = new THREE.Group();
   const ball = new THREE.Group();
   at(ball, 0, 1.25, 0);
-  ball.add(outlined(new THREE.SphereGeometry(1.2, 18, 14), toon("#e88aa8"), 1.07));
-  const strand = toon("#c95a82");
+  ball.add(outlined(new THREE.SphereGeometry(1.2, 18, 14), toon("#d98aa6"), 1.07));
+  const strand = toon("#9b3358");
   for (let k = 0; k < 5; k++) {
     const wrap = new THREE.Mesh(new THREE.TorusGeometry(1.21, .055, 6, 40), strand);
     wrap.rotation.set(k * .7, k * 1.3, k * .45);
@@ -318,7 +318,7 @@ export function makePalm(kit: Kit, height: number, lean: number, phase: number):
     crown.add(pivot);
     fronds.push(tilt);
   }
-  const nut = toon("#ea7440");
+  const nut = toon("#ff6a3d");
   for (let k = 0; k < 3; k++) {
     const coconut = outlined(new THREE.SphereGeometry(.3, 10, 8), nut, 1.12);
     coconut.position.set(Math.sin(k * 2.1) * .32, -.3, Math.cos(k * 2.1) * .32);

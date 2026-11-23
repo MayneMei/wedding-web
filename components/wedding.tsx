@@ -200,19 +200,20 @@ export default function Wedding({ config, invitation, token, demo = false, inval
       <button className="journey-language game-sound" type="button" onClick={toggleSound} aria-pressed={!muted} aria-label={muted ? t("Turn sound on", "打开声音") : t("Turn sound off", "关闭声音")}>{muted ? "🔇" : "🔊"}</button>
     </div>
     {page === 0 && <section className="journey-welcome">
+      <img className="welcome-art" src="/wedding-cover-art.webp" width={1122} height={770} fetchPriority="high"
+        alt={t("Illustration of Maggie and Mayne holding bento boxes under fireworks, with their two cats", "Maggie 和 Mayne 在烟花下捧着便当的插画，旁边是两只猫")} />
       <header className="welcome-note">
-        <p>{t("Welcome to our wedding", "欢迎参加我们的婚礼")}</p>
-        <h1 tabIndex={-1}>Maggie &amp; Mayne</h1>
-        <p>{t("We’re so glad you’re here. Come take a little walk through our story with our two cats.", "很开心你来了。跟着无牙和煤球走一走，看看我们是怎么一路走到今天的。")}</p>
-        <p className="journey-event">{dateLabel(config.date,zh)}<br/>{config.venue}</p>
+        <p className="welcome-kicker">{t("Welcome to our wedding", "欢迎参加我们的婚礼")}</p>
+        <h1 tabIndex={-1}>Maggie <span>&amp;</span> Mayne</h1>
+        <p className="welcome-when">{dateLabel(config.date,zh)}<i aria-hidden="true"> · </i><br className="welcome-break" />{config.venue}</p>
       </header>
       {invalid && <p className="journey-cover-notice" role="alert">{t("This invitation link is unavailable. Ask Maggie or Mayne for a new link.", "这个邀请链接不可用，请联系 Maggie 或 Mayne。")}</p>}
       <div className="game-title-actions">
-        <p className="game-title-tag">{t("A 6-stage road-trip game", "6 关公路冒险小游戏")}</p>
         <button className="game-start" type="button" aria-label={t("Start the game and open the invitation", "开始游戏，打开请柬")} onClick={startGame}>
-          ▶ {t("PRESS START", "开始游戏")}
+          {t("Start the journey", "开始旅程")} <span aria-hidden="true">→</span>
         </button>
-        {best.score > 0 && <p className="game-best">🏆 {t("Your best", "你的最高分")}: <b>{fmt(best.score)}</b> · {best.stars}/{MAX_STARS} ★</p>}
+        <p className="game-title-tag">{t("Walk through our story with our two cats · a 6-stage road trip", "跟着无牙和煤球，走一遍我们的故事 · 6 关公路冒险")}</p>
+        {best.score > 0 && <p className="game-best">{t("Your best", "你的最高分")} <b>{fmt(best.score)}</b> · {best.stars}/{MAX_STARS} ★</p>}
       </div>
     </section>}
     {page === 1 && <section className="journey-choose">

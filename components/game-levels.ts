@@ -35,46 +35,68 @@ export const DEPTH = .75;
 export const toWorld = (p: Point): Vec => ({ x: p.x, z: p.y * DEPTH });
 
 export type HazardMotion = "bob" | "sway" | "orbit" | "chase";
+export type HazardKind = "yarn" | "crab" | "pigeon" | "robot" | "seal" | "boss";
 // amp: world units of travel (chase: how close you must be before it chases). speed: radians/s (chase: units/s).
-export type HazardDef = { icon: string; t: number; motion: HazardMotion; amp: number; speed: number; en: string; zh: string };
-export type PowerDef = { kind: "speed" | "shield"; t: number; off: number };
+// hp: hits it takes to defeat (paw swipe, bouquet or dash). points: score for defeating it.
+export type HazardDef = {
+  kind: HazardKind; icon: string; t: number; motion: HazardMotion; amp: number; speed: number;
+  hp: number; points: number; en: string; zh: string; off?: number; phase?: number;
+};
+export type PowerKind = "speed" | "shield" | "bouquet";
+export type PowerDef = { kind: PowerKind; t: number; off: number };
 export type StageDef = { hearts: number; hazards: HazardDef[]; powers: PowerDef[]; bonus: { t: number; off: number } };
 
-const yarn = (t: number, motion: HazardMotion, amp: number, speed: number): HazardDef =>
-  ({ icon: "🧶", t, motion, amp, speed, en: "yarn ball", zh: "毛线球" });
+type Extra = Partial<Pick<HazardDef, "off" | "phase">>;
+const yarn = (t: number, motion: HazardMotion, amp: number, speed: number, extra: Extra = {}): HazardDef =>
+  ({ kind: "yarn", icon: "🧶", t, motion, amp, speed, hp: 1, points: 100, en: "yarn ball", zh: "毛线球", ...extra });
+const crab = (t: number, amp: number, speed: number, extra: Extra = {}): HazardDef =>
+  ({ kind: "crab", icon: "🦀", t, motion: "sway", amp, speed, hp: 2, points: 150, en: "crab", zh: "螃蟹", ...extra });
+const pigeon = (t: number, amp: number, speed: number, extra: Extra = {}): HazardDef =>
+  ({ kind: "pigeon", icon: "🐦", t, motion: "orbit", amp, speed, hp: 1, points: 150, en: "plaza pigeon", zh: "广场鸽", ...extra });
+const robot = (t: number, amp: number, speed: number, extra: Extra = {}): HazardDef =>
+  ({ kind: "robot", icon: "🤖", t, motion: "chase", amp, speed, hp: 3, points: 300, en: "robot vacuum", zh: "扫地机器人", ...extra });
+const seal = (t: number, amp: number, speed: number, extra: Extra = {}): HazardDef =>
+  ({ kind: "seal", icon: "🦭", t, motion: "sway", amp, speed, hp: 3, points: 250, en: "sea lion", zh: "海狮", ...extra });
+const boss: HazardDef = {
+  kind: "boss", icon: "👑", t: .58, motion: "chase", amp: 30, speed: 7.2, hp: 8, points: 1000,
+  en: "Boss: the Roomba King", zh: "Boss：扫地机器人大王",
+};
 
 export const stageDefs: StageDef[] = [
-  { hearts: 4, hazards: [], powers: [], bonus: { t: .5, off: -11 } },
-  { hearts: 6, hazards: [yarn(.58, "bob", 6, 1.7)], powers: [], bonus: { t: .3, off: 12 } },
+  { hearts: 4, hazards: [yarn(.72, "bob", 2.5, 1.2, { off: 6 })], powers: [], bonus: { t: .5, off: -11 } },
   {
     hearts: 6,
-    hazards: [yarn(.33, "sway", 6.5, 1.5), { icon: "🦀", t: .72, motion: "sway", amp: 4.5, speed: 3, en: "crab", zh: "螃蟹" }],
-    powers: [{ kind: "speed", t: .52, off: 9 }],
+    hazards: [yarn(.58, "bob", 6, 1.7), yarn(.3, "sway", 4, 1.4, { off: -6 })],
+    powers: [{ kind: "bouquet", t: .18, off: 8 }],
+    bonus: { t: .3, off: 12 },
+  },
+  {
+    hearts: 6,
+    hazards: [yarn(.33, "sway", 6.5, 1.5), crab(.72, 4.5, 3), crab(.5, 3.5, 2.4, { off: -9, phase: 2 })],
+    powers: [{ kind: "speed", t: .52, off: 9 }, { kind: "bouquet", t: .2, off: -8 }],
     bonus: { t: .6, off: -14 },
   },
   {
     hearts: 7,
-    hazards: [{ icon: "🕊️", t: .45, motion: "orbit", amp: 6, speed: 1.9, en: "pigeon", zh: "鸽子" }, yarn(.8, "bob", 5, 2.2)],
-    powers: [{ kind: "shield", t: .28, off: -9 }],
+    hazards: [pigeon(.45, 6, 1.9), pigeon(.62, 4.5, -2.3, { off: 7, phase: 2.4 }), yarn(.8, "bob", 5, 2.2)],
+    powers: [{ kind: "shield", t: .28, off: -9 }, { kind: "bouquet", t: .12, off: 9 }],
     bonus: { t: .55, off: 13 },
   },
   {
     hearts: 7,
-    hazards: [{ icon: "🤖", t: .55, motion: "chase", amp: 22, speed: 8, en: "robot vacuum", zh: "扫地机器人" }, yarn(.25, "sway", 6, 2)],
-    powers: [{ kind: "speed", t: .72, off: -9 }],
+    hazards: [robot(.55, 22, 8), yarn(.25, "sway", 6, 2), crab(.82, 4, 2.8, { off: 8 })],
+    powers: [{ kind: "speed", t: .72, off: -9 }, { kind: "bouquet", t: .15, off: 9 }],
     bonus: { t: .4, off: -14 },
   },
   {
     hearts: 8,
-    hazards: [
-      { icon: "🤖", t: .6, motion: "chase", amp: 24, speed: 9.3, en: "robot vacuum", zh: "扫地机器人" },
-      yarn(.35, "bob", 6, 2.3),
-      { icon: "🦭", t: .84, motion: "sway", amp: 5, speed: 2.6, en: "sea lion", zh: "海狮" },
-    ],
-    powers: [{ kind: "shield", t: .46, off: 10 }],
+    hazards: [boss, yarn(.35, "bob", 6, 2.3), seal(.84, 5, 2.6)],
+    powers: [{ kind: "shield", t: .46, off: 10 }, { kind: "bouquet", t: .14, off: -9 }, { kind: "bouquet", t: .72, off: -10 }],
     bonus: { t: .7, off: 12 },
   },
 ];
+
+export const BOUQUET_AMMO = 5;
 
 export const keepsakes = [
   ["🍁", "maple leaf", "枫叶"], ["🍋", "lemon tea", "柠檬茶"], ["🍣", "sushi", "寿司"],
@@ -99,6 +121,9 @@ export type StageResult = {
   time: number;
   timeBonus: number;
   bestCombo: number;
+  kills: number;
+  enemies: number;
+  bossDown: boolean;
 };
 
 export function totals(results: (StageResult | undefined)[]) {
@@ -112,6 +137,9 @@ export function totals(results: (StageResult | undefined)[]) {
     bonus: done.filter((r) => r.bonus).length,
     bestCombo: Math.max(0, ...done.map((r) => r.bestCombo)),
     timeBonus: done.reduce((sum, r) => sum + r.timeBonus, 0),
+    kills: done.reduce((sum, r) => sum + (r.kills ?? 0), 0),
+    enemies: stageDefs.reduce((sum, s) => sum + s.hazards.length, 0),
+    boss: done.some((r) => r.bossDown),
     complete: done.length === stageDefs.length,
   };
 }
@@ -138,6 +166,8 @@ export function achievements(results: (StageResult | undefined)[]) {
     { id: "bonus", icon: "⭐", en: "Treasure Hunter", zh: "寻宝猫", descEn: "Find all 6 hidden stars", descZh: "找到全部 6 颗隐藏星星", got: all.bonus === stageDefs.length },
     { id: "combo", icon: "🔥", en: "Combo Cat", zh: "连击王", descEn: `Reach a ×${MAX_COMBO} combo`, descZh: `达成 ×${MAX_COMBO} 连击`, got: all.bestCombo >= MAX_COMBO },
     { id: "speed", icon: "⚡", en: "Zoomies", zh: "飞毛腿", descEn: "Earn 1,500 time bonus", descZh: "时间奖励累计 1,500", got: all.timeBonus >= 1500 },
+    { id: "pests", icon: "🐾", en: "Pest Control", zh: "清场高手", descEn: "Defeat every critter", descZh: "打倒所有捣蛋鬼", got: all.complete && all.kills === all.enemies },
+    { id: "boss", icon: "🤖", en: "Boss Slayer", zh: "屠龙猫", descEn: "Defeat the Roomba King", descZh: "打倒扫地机器人大王", got: all.boss },
     { id: "perfect", icon: "👑", en: "Perfect Run", zh: "完美通关", descEn: `All ${MAX_STARS} stars`, descZh: `集齐 ${MAX_STARS} 颗星`, got: all.stars === MAX_STARS },
   ];
 }

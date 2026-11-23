@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sfx } from "./game-audio";
 import {
-  DEPTH, MAX_COMBO, POINTS, cats, clampY, keepsakes, pointOnRoute, stageDefs, toWorld,
+  BOUQUET_AMMO, DEPTH, MAX_COMBO, POINTS, cats, clampY, keepsakes, pointOnRoute, stageDefs, toWorld,
   type CatId, type Point, type StageResult, type Vec,
 } from "./game-levels";
 import type { World } from "./world3d";
@@ -28,7 +28,9 @@ const directions: { [key: string]: Vec } = {
   ArrowLeft: { x: -1, z: 0 }, a: { x: -1, z: 0 }, ArrowRight: { x: 1, z: 0 }, d: { x: 1, z: 0 },
 };
 const BOUNDS = { minX: 1, maxX: 99, minZ: 15 * DEPTH, maxZ: 88 * DEPTH };
+const attackKeys = new Set(["j", "k", "f", "Enter"]);
 const fmt = (n: number) => n.toLocaleString("en-US");
+const buzz = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* Haptics are optional. */ } };
 const dist = (a: Vec, b: Vec) => Math.hypot(a.x - b.x, a.z - b.z);
 
 export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start, onClear }: Props) {
@@ -51,7 +53,7 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
       item: toWorld({ x: (start.x + goal.x) / 2, y: Math.min(79, (start.y + goal.y) / 2 + (stage % 2 ? 9 : -10)) }),
       bonus: offset(def.bonus.t, def.bonus.off),
       powers: def.powers.map((power) => ({ kind: power.kind, pos: offset(power.t, power.off) })),
-      hazards: def.hazards.map((hazard) => ({ ...hazard, home: toWorld(pointOnRoute(stage, hazard.t)) })),
+      hazards: def.hazards.map((hazard) => ({ ...hazard, home: offset(hazard.t, hazard.off ?? 0) })),
     };
   }, [def, stage, sx, sy, goalStop.x, goalStop.y]);
 
@@ -63,10 +65,17 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
   const timeEl = useRef<HTMLElement>(null);
   const comboEl = useRef<HTMLElement>(null);
   const dashEl = useRef<HTMLButtonElement>(null);
+  const attackEl = useRef<HTMLButtonElement>(null);
+  const ammoEl = useRef<HTMLElement>(null);
+  const stickEl = useRef<HTMLDivElement>(null);
+  const knobEl = useRef<HTMLSpanElement>(null);
   const keys = useRef(new Set<string>());
   const target = useRef<Vec | null>(null);
+  const stick = useRef<Vec | null>(null);
   const dashRequest = useRef(false);
+  const attackRequest = useRef(false);
   const dragging = useRef(false);
+  const [touch] = useState(() => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches);
 
   const [phase, setPhase] = useState<Phase>(stage === 0 ? "intro" : "count");
   const phaseRef = useRef(phase);
@@ -108,7 +117,7 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
       try {
         world.current = createWorld(canvas.current, {
           stage, stops, hearts: layout.hearts, bonus: layout.bonus, powers: layout.powers,
-          hazards: layout.hazards.map((h) => ({ icon: h.icon, pos: h.home })),
+          hazards: layout.hazards.map((h) => ({ kind: h.kind, icon: h.icon, pos: h.home, maxHp: h.hp })),
           item: layout.item, itemIcon: icon, goal: layout.goal, start: layout.start, catImg,
         });
       } catch {
@@ -150,13 +159,21 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
       hearts: layout.hearts.map(() => false), powers: layout.powers.map(() => false), bonus: false,
       score: 0, combo: 0, comboTimer: 0, bestCombo: 0, hits: 0, lives: MAX_LIVES,
       inv: 0, speedT: 0, shieldT: 0, dashT: 0, dashCd: 0, time: 0, age: 0, hinted: false, walking: false,
-      chase: layout.hazards.map((h) => ({ ...h.home })),
-      chaseFace: layout.hazards.map(() => 1),
+      ammo: 0, atkCd: 0, kills: 0, bossDown: false, dashHits: new Set<number>(),
+      shots: [] as { x: number; z: number; vx: number; vz: number; life: number; spin: number }[],
+      hz: layout.hazards.map((h) => ({
+        hp: h.hp, alive: true, hurt: 0, stun: 0, clock: 0, angry: false,
+        pos: { ...h.home }, off: { x: 0, z: 0 }, kb: { x: 0, z: 0 },
+        // Boss attack pattern: chase, wind up, then charge in a straight line.
+        mode: "chase" as "chase" | "windup" | "charge", modeT: 0, aim: { x: 0, z: 0 },
+      })),
     };
     w.reset();
     if (scoreEl.current) scoreEl.current.textContent = "0";
     target.current = null;
     dashRequest.current = false;
+    attackRequest.current = false;
+    showAmmo();
 
     let frame = 0, last = 0;
 
@@ -200,6 +217,10 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
       comboEl.current.textContent = s.combo > 1 ? `×${s.combo} COMBO` : "";
       comboEl.current.dataset.level = String(s.combo);
     }
+    function showAmmo() {
+      if (ammoEl.current) ammoEl.current.textContent = s.ammo ? "×" + s.ammo : "";
+      if (attackEl.current) attackEl.current.dataset.weapon = s.ammo ? "bouquet" : "paw";
+    }
     function shake() {
       const el = canvas.current!;
       el.classList.remove("is-shaking"); void el.offsetWidth; el.classList.add("is-shaking");
@@ -213,17 +234,23 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
         if (down && !e.repeat) dashRequest.current = true;
         return;
       }
+      if (attackKeys.has(k) && phaseRef.current === "play") {
+        e.preventDefault();
+        if (down && !e.repeat) attackRequest.current = true;
+        return;
+      }
       if (!directions[k] || phaseRef.current !== "play") return;
       e.preventDefault();
       if (down) { held.add(k); target.current = null; } else held.delete(k);
     }
     const press = (e: KeyboardEvent) => key(e, true), release = (e: KeyboardEvent) => key(e, false);
-    const blur = () => { held.clear(); target.current = null; };
+    const blur = () => { held.clear(); target.current = null; stick.current = null; };
 
     function hit(from: Vec) {
       s.lives -= 1; s.hits += 1; s.inv = 1.4; s.combo = 0; showCombo();
       setLives(s.lives);
       sfx.hit();
+      buzz(80);
       const dx = s.p.x - from.x, dz = s.p.z - from.z;
       const len = Math.hypot(dx, dz) || 1;
       s.p.x = Math.min(BOUNDS.maxX, Math.max(BOUNDS.minX, s.p.x + dx / len * 5));
@@ -238,6 +265,75 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
         phaseRef.current = "over";
         setPhase("over");
       }
+    }
+
+    function nearestEnemy(range: number) {
+      let best = -1, bestD = range;
+      s.hz.forEach((st, i) => {
+        const d = dist(st.pos, s.p);
+        if (st.alive && d < bestD) { best = i; bestD = d; }
+      });
+      return best;
+    }
+
+    function damage(i: number, from: Vec) {
+      const st = s.hz[i], hz = layout.hazards[i];
+      if (!st.alive || st.hurt > 0) return;
+      const boss = hz.kind === "boss";
+      st.hp -= 1;
+      st.hurt = .22;
+      st.stun = boss ? .4 : .9;
+      st.mode = "chase"; st.modeT = 0;
+      const dx = st.pos.x - from.x, dz = st.pos.z - from.z;
+      const len = Math.hypot(dx, dz) || 1;
+      st.kb = { x: dx / len * (boss ? 12 : 30), z: dz / len * (boss ? 12 : 30) };
+      sfx.bonk();
+      burst(st.pos, "✶", 1.5);
+      if (st.hp > 0) return;
+      st.alive = false;
+      s.kills += 1;
+      addScore(hz.points);
+      pop(st.pos, `${hz.icon} +${hz.points}`, "is-gold", 5);
+      sfx.defeat();
+      buzz(30);
+      if (boss) {
+        s.bossDown = true;
+        pop(st.pos, say.current("Boss down!", "打败大王！"), "is-boss", 9);
+        burst(st.pos, "★", 3);
+        shake();
+      }
+    }
+
+    function attack() {
+      const p = s.p;
+      const i = nearestEnemy(s.ammo > 0 ? 34 : 8);
+      let aim = s.dir;
+      if (i >= 0) {
+        const e = s.hz[i].pos;
+        const len = dist(e, p) || 1;
+        aim = { x: (e.x - p.x) / len, z: (e.z - p.z) / len };
+      }
+      s.dir = aim;
+      if (Math.abs(aim.x) > .05) s.face = aim.x < 0 ? -1 : 1;
+      if (s.ammo > 0) {
+        s.ammo -= 1;
+        showAmmo();
+        s.shots.push({ x: p.x + aim.x * 1.5, z: p.z + aim.z * 1.5, vx: aim.x * 42, vz: aim.z * 42, life: .85, spin: 0 });
+        s.atkCd = .28;
+        sfx.toss();
+        return;
+      }
+      s.atkCd = .36;
+      w!.swipe(aim);
+      sfx.swipe();
+      s.hz.forEach((st, j) => {
+        if (!st.alive) return;
+        const reach = layout.hazards[j].kind === "boss" ? 7 : 5.4;
+        const d = dist(st.pos, p);
+        if (d > reach) return;
+        const dot = d < 2.6 ? 1 : ((st.pos.x - p.x) * aim.x + (st.pos.z - p.z) * aim.z) / d;
+        if (dot > .4) damage(j, p);
+      });
     }
 
     function finish() {
@@ -258,6 +354,7 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
         stars: 1 + (hearts === layout.hearts.length ? 1 : 0) + (s.hits === 0 ? 1 : 0),
         hearts, totalHearts: layout.hearts.length, hits: s.hits, bonus: s.bonus,
         time: Math.round(s.time * 10) / 10, timeBonus, bestCombo: s.bestCombo,
+        kills: s.kills, enemies: layout.hazards.length, bossDown: s.bossDown,
       };
       burst(layout.goal, "🎉", 4);
       sfx.clear();
@@ -273,32 +370,58 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
       const p = s.p;
       const playing = phaseRef.current === "play" && !s.done;
 
-      const hazardPos = layout.hazards.map((hz, i) => {
-        const shift = i * 1.3;
-        let x = hz.home.x, z = hz.home.z;
-        if (hz.motion === "bob") z += Math.sin(s.age * hz.speed + shift) * hz.amp;
-        if (hz.motion === "sway") { x += Math.sin(s.age * hz.speed + shift) * hz.amp; s.chaseFace[i] = Math.cos(s.age * hz.speed + shift) < 0 ? -1 : 1; }
-        if (hz.motion === "orbit") {
-          x += Math.cos(s.age * hz.speed + shift) * hz.amp;
-          z += Math.sin(s.age * hz.speed + shift) * hz.amp * .8;
-          s.chaseFace[i] = -Math.sin(s.age * hz.speed + shift) < 0 ? -1 : 1;
+      const clampPos = (v: Vec) => {
+        v.x = Math.min(BOUNDS.maxX, Math.max(BOUNDS.minX, v.x));
+        v.z = Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, v.z));
+      };
+      layout.hazards.forEach((hz, i) => {
+        const st = s.hz[i];
+        if (!st.alive) return;
+        st.hurt = Math.max(0, st.hurt - dt);
+        st.stun = Math.max(0, st.stun - dt);
+        const decay = Math.exp(-dt * 7);
+        if (hz.motion !== "chase") {
+          if (st.stun <= 0) st.clock += dt;
+          st.off.x = (st.off.x + st.kb.x * dt) * Math.exp(-dt * 1.2);
+          st.off.z = (st.off.z + st.kb.z * dt) * Math.exp(-dt * 1.2);
+          st.kb.x *= decay; st.kb.z *= decay;
+          const ph = st.clock * hz.speed + i * 1.3 + (hz.phase ?? 0);
+          let x = hz.home.x, z = hz.home.z;
+          if (hz.motion === "bob") z += Math.sin(ph) * hz.amp;
+          if (hz.motion === "sway") x += Math.sin(ph) * hz.amp;
+          if (hz.motion === "orbit") { x += Math.cos(ph) * hz.amp; z += Math.sin(ph) * hz.amp * .8; }
+          st.pos = { x: x + st.off.x, z: z + st.off.z };
+          clampPos(st.pos);
+          return;
         }
-        if (hz.motion === "chase") {
-          const c = s.chase[i];
-          const toP = { x: p.x - c.x, z: p.z - c.z };
-          const d = Math.hypot(toP.x, toP.z) || 1;
-          const home = { x: hz.home.x - c.x, z: hz.home.z - c.z };
-          const homeD = Math.hypot(home.x, home.z);
-          let v = { x: 0, z: 0 };
-          if (playing && d < hz.amp && s.shieldT <= 0) v = { x: toP.x / d * hz.speed, z: toP.z / d * hz.speed };
-          else if (playing && d < hz.amp) v = { x: -toP.x / d * hz.speed * .8, z: -toP.z / d * hz.speed * .8 };
-          else if (homeD > .3) v = { x: home.x / homeD * hz.speed * .6, z: home.z / homeD * hz.speed * .6 };
-          c.x += v.x * dt;
-          c.z = Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, c.z + v.z * dt));
-          if (Math.abs(v.x) > .1) s.chaseFace[i] = v.x < 0 ? -1 : 1;
-          x = c.x; z = c.z;
-        }
-        return { x, z };
+        const c = st.pos;
+        const toP = { x: p.x - c.x, z: p.z - c.z };
+        const d = Math.hypot(toP.x, toP.z) || 1;
+        const home = { x: hz.home.x - c.x, z: hz.home.z - c.z };
+        const homeD = Math.hypot(home.x, home.z);
+        const hunting = playing && d < hz.amp && s.shieldT <= 0;
+        st.angry = hunting;
+        let v = { x: 0, z: 0 };
+        if (st.stun > 0) v = { x: 0, z: 0 };
+        else if (hz.kind === "boss" && hunting && st.mode !== "chase") {
+          st.modeT += dt;
+          if (st.mode === "windup" && st.modeT > .75) { st.mode = "charge"; st.modeT = 0; sfx.dash(); }
+          else if (st.mode === "charge") {
+            v = { x: st.aim.x * hz.speed * 3.2, z: st.aim.z * hz.speed * 3.2 };
+            if (st.modeT > .65) { st.mode = "chase"; st.modeT = 0; }
+          }
+        } else if (hunting) {
+          v = { x: toP.x / d * hz.speed, z: toP.z / d * hz.speed };
+          if (hz.kind === "boss") {
+            st.modeT += dt;
+            if (st.modeT > 2.8 && d < 26) { st.mode = "windup"; st.modeT = 0; st.aim = { x: toP.x / d, z: toP.z / d }; }
+          }
+        } else if (playing && d < hz.amp) v = { x: -toP.x / d * hz.speed * .8, z: -toP.z / d * hz.speed * .8 };
+        else if (homeD > .3) v = { x: home.x / homeD * hz.speed * .6, z: home.z / homeD * hz.speed * .6 };
+        c.x += (v.x + st.kb.x) * dt;
+        c.z += (v.z + st.kb.z) * dt;
+        st.kb.x *= decay; st.kb.z *= decay;
+        clampPos(c);
       });
       const bait = layout.item;
 
@@ -323,11 +446,22 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
           step = Math.min(step, Math.hypot(dx, dz));
           if (step < .01) target.current = null;
         }
+        if (stick.current) {
+          const m = Math.hypot(stick.current.x, stick.current.z);
+          dx = stick.current.x; dz = stick.current.z;
+          step *= Math.max(.45, Math.min(1, m));
+          target.current = null;
+        }
         let len = Math.hypot(dx, dz);
         if (len) s.dir = { x: dx / len, z: dz / len };
         if (dashRequest.current) {
           dashRequest.current = false;
-          if (s.dashCd <= 0) { s.dashT = .2; s.dashCd = 1.1; sfx.dash(); target.current = null; }
+          if (s.dashCd <= 0) { s.dashT = .2; s.dashCd = 1.1; s.dashHits.clear(); sfx.dash(); target.current = null; }
+        }
+        s.atkCd = Math.max(0, s.atkCd - dt);
+        if (attackRequest.current) {
+          attackRequest.current = false;
+          if (s.atkCd <= 0) attack();
         }
         if (s.dashT > 0) { dx = s.dir.x; dz = s.dir.z; len = 1; step = stats.speed * 3 * dt; }
         if (len && step > 0) {
@@ -355,9 +489,12 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
           if (s.powers[i] || !near(power.pos, stats.magnet + .6)) return;
           s.powers[i] = true;
           w!.hidePower(i);
-          if (power.kind === "speed") s.speedT = 5; else s.shieldT = 6;
+          if (power.kind === "speed") s.speedT = 5;
+          else if (power.kind === "shield") s.shieldT = 6;
+          else { s.ammo += BOUQUET_AMMO; showAmmo(); }
           addScore(POINTS.power);
-          pop(power.pos, power.kind === "speed" ? say.current("Speed up!", "加速！") : say.current("Shield!", "护盾！"), "is-power");
+          pop(power.pos, power.kind === "speed" ? say.current("Speed up!", "加速！") : power.kind === "shield" ? say.current("Shield!", "护盾！")
+            : say.current(`Bouquets ×${BOUQUET_AMMO}!`, `捧花 ×${BOUQUET_AMMO}！`), "is-power");
           sfx.power();
         });
         if (!s.bonus && near(layout.bonus, stats.magnet + .6)) {
@@ -375,31 +512,47 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
           pop(bait, `${icon} +${POINTS.keepsake}`, "is-gold");
           sfx.keepsake();
         }
+        // Thrown bouquets fly straight and bonk the first critter they touch.
+        s.shots = s.shots.filter((shot) => {
+          shot.x += shot.vx * dt; shot.z += shot.vz * dt; shot.life -= dt; shot.spin += dt * 14;
+          const struck = s.hz.findIndex((st, j) => st.alive && dist(st.pos, shot) < (layout.hazards[j].kind === "boss" ? 3.8 : 2.5));
+          if (struck >= 0) { damage(struck, { x: shot.x - shot.vx * .05, z: shot.z - shot.vz * .05 }); return false; }
+          return shot.life > 0 && shot.x > -5 && shot.x < 105;
+        });
+        // Dashing through a critter bonks it.
+        if (s.dashT > 0) s.hz.forEach((st, j) => {
+          if (st.alive && !s.dashHits.has(j) && dist(st.pos, p) < (layout.hazards[j].kind === "boss" ? 4 : 3)) { s.dashHits.add(j); damage(j, p); }
+        });
         if (s.inv <= 0 && s.shieldT <= 0 && s.dashT <= 0) {
-          const struck = hazardPos.find((q) => near(q, 2.8));
-          if (struck) hit(struck);
+          const struck = s.hz.find((st, j) => st.alive && st.stun <= 0 && near(st.pos, layout.hazards[j].kind === "boss" ? 3.9 : 2.8));
+          if (struck) hit(struck.pos);
         }
         if (!s.done && near(layout.goal, 3)) {
           if (s.got) finish();
           else if (!s.hinted) { s.hinted = true; setHint(true); }
         } else s.hinted = false;
         if (dashEl.current) dashEl.current.style.setProperty("--cool", String(s.dashCd / 1.1));
+        if (attackEl.current) attackEl.current.style.setProperty("--cool", String(s.atkCd / .36));
       }
 
-      w!.frame({
+      const view = w!.frame({
         dt,
         camera: phaseRef.current === "intro" ? "overview" : "follow",
         cat: { pos: p, face: s.face, walking: s.walking, hurt: s.inv > 0, shield: s.shieldT > 0, fast: s.speedT > 0 || s.dashT > 0, carrying: s.got },
-        hazards: hazardPos,
-        hazardFace: s.chaseFace,
+        hazards: s.hz.map((st) => ({ ...st.pos, alive: st.alive, hurt: st.hurt > 0, stunned: st.stun > 0, hp: st.hp, angry: st.angry || st.mode !== "chase" })),
+        shots: s.shots,
         itemVisible: !s.got,
       });
+      if (view.scattered) sfx.coo();
       if (process.env.NODE_ENV !== "production") {
         // Test hook for automated play-throughs in development builds only.
         (window as unknown as { __stageTargets?: unknown }).__stageTargets = {
           item: s.got ? null : w!.project(layout.item, 0),
           goal: w!.project(layout.goal, 0),
           hearts: layout.hearts.filter((_, i) => !s.hearts[i]).map((h) => w!.project(h, 0)),
+          hazards: s.hz.map((st) => ({ ...w!.project(st.pos, 0), alive: st.alive, hp: st.hp })),
+          cat: w!.project(p, 0),
+          ammo: s.ammo,
           phase: phaseRef.current,
         };
       }
@@ -434,6 +587,24 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
     if (at) target.current = at;
   }
 
+  // Virtual joystick for phones: screen up is "north" on the map, so the stick maps straight onto x/z.
+  function steer(e: React.PointerEvent<HTMLDivElement>) {
+    const el = stickEl.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const max = r.width * .36;
+    const len = Math.hypot(dx, dy);
+    const m = Math.min(1, len / max);
+    const nx = len ? dx / len : 0, ny = len ? dy / len : 0;
+    stick.current = m < .15 ? null : { x: nx * m, z: ny * m };
+    if (knobEl.current) knobEl.current.style.transform = `translate(${nx * Math.min(len, max)}px, ${ny * Math.min(len, max)}px)`;
+  }
+  function release() {
+    stick.current = null;
+    if (knobEl.current) knobEl.current.style.transform = "";
+  }
+
   const objective = carrying
     ? t("Deliver it to " + title + " ⚑", "送到" + title + " ⚑")
     : tangled ? t(`Tangled! Grab the ${keepsakeEn} again`, `被撞掉了！再去拿${keepsakeZh}`)
@@ -444,7 +615,7 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
 
   return <>
     <canvas ref={canvas} className="game-canvas3d"
-      aria-label={t("3D map of our story. Move with WASD or the arrow keys, or press and drag on the map. Space to dash.", "3D 故事地图。用 WASD 或方向键移动，也可以在地图上按住拖动；空格键冲刺。")}
+      aria-label={t("3D map of our story. Move with WASD or the arrow keys, or press and drag on the map. Space to dash, J to attack.", "3D 故事地图。用 WASD 或方向键移动，也可以在地图上按住拖动；空格键冲刺，J 键攻击。")}
       onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture?.(e.pointerId); aim(e); }}
       onPointerMove={(e) => { if (dragging.current) aim(e); }}
       onPointerUp={() => { dragging.current = false; }}
@@ -471,20 +642,38 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
       <div className="passport">{keepsakes.map(([symbol, name], i) => <span key={name} className={i < stage || (i === stage && carrying) ? "stamped" : ""}>{i <= stage ? symbol : "·"}</span>)}</div>
       <strong>{objective}</strong>
     </div>
-    <button type="button" className="game-dash" ref={dashEl} aria-label={t("Dash", "冲刺")}
-      onPointerDown={(e) => { e.preventDefault(); dashRequest.current = true; }}>
-      <span>{t("DASH", "冲刺")}</span><small>{t("Space", "空格")}</small>
-    </button>
+    <div className="game-stick" ref={stickEl} aria-hidden="true"
+      onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); steer(e); }}
+      onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture?.(e.pointerId)) steer(e); }}
+      onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}>
+      <span className="game-stick-knob" ref={knobEl} />
+    </div>
+    <div className="game-buttons">
+      <button type="button" className="game-dash" ref={dashEl} aria-label={t("Dash", "冲刺")}
+        onPointerDown={(e) => { e.preventDefault(); dashRequest.current = true; }}>
+        <span>{t("DASH", "冲刺")}</span><small>{t("Space", "空格")}</small>
+      </button>
+      <button type="button" className="game-attack" ref={attackEl} data-weapon="paw" aria-label={t("Attack", "攻击")}
+        onPointerDown={(e) => { e.preventDefault(); attackRequest.current = true; }}>
+        <span className="game-attack-icon" aria-hidden="true" />
+        <span>{t("ATTACK", "攻击")}</span><small>J</small>
+        <b ref={ammoEl} className="game-ammo" />
+      </button>
+    </div>
 
     {phase === "intro" && !paused && <div className="game-overlay">
       <div className="game-card">
         <p className="game-card-kicker">{t("How to play", "玩法说明")}</p>
         <h2>{t("Ready, kitty?", "准备好了吗？")}</h2>
         <ul className="game-howto">
-          <li><b>🕹️</b>{t("Move with WASD / arrow keys, or press and drag on the map.", "用 WASD / 方向键移动，或在地图上按住拖动。")}</li>
+          <li><b>🕹️</b>{touch ? t("Move with the joystick in the bottom-left, or touch and drag on the map.", "用左下角的摇杆移动，也可以在地图上按住拖动。")
+            : t("Move with WASD / arrow keys, or press and drag on the map.", "用 WASD / 方向键移动，或在地图上按住拖动。")}</li>
+          <li><b>🐾</b>{touch ? t("Tap ATTACK to swipe at nearby critters. Grab a 💐 to throw bouquets from afar!", "点「攻击」用猫爪拍附近的捣蛋鬼。捡到 💐 还能远程扔捧花！")
+            : t("Press J (or the ATTACK button) to swipe at nearby critters. Grab a 💐 to throw bouquets from afar!", "按 J（或「攻击」按钮）用猫爪拍附近的捣蛋鬼。捡到 💐 还能远程扔捧花！")}</li>
           <li><b>♥</b>{t("Collect hearts along the trail. Grab them quickly to build a combo.", "沿途收集爱心，连续收集可以触发连击加分。")}</li>
           <li><b>{icon}</b>{t("Pick up the keepsake and deliver it to the ⚑ flag to clear the stage.", "拿到纪念物，送到 ⚑ 旗标就能过关。")}</li>
-          <li><b>💨</b>{t("Dash with Space or the DASH button. You can't be hit while dashing.", "按空格或「冲刺」按钮冲刺，冲刺时无敌。")}</li>
+          <li><b>💨</b>{touch ? t("Tap DASH to dash. You can't be hit while dashing, and you bonk whatever you dash into.", "点「冲刺」冲刺，冲刺时无敌，还能撞飞挡路的捣蛋鬼。")
+            : t("Dash with Space or the DASH button. You can't be hit while dashing, and you bonk whatever you dash into.", "按空格或「冲刺」按钮冲刺，冲刺时无敌，还能撞飞挡路的捣蛋鬼。")}</li>
           <li><b>⭐</b>{t("Each stage hides a bonus star. Look for 🐟 speed and 🌿 shield power-ups too.", "每关都藏着一颗星星，还有 🐟 加速和 🌿 护盾道具。")}</li>
           <li><b>3 ♥</b>{t("You have 3 lives per stage. Clear stages with no hits and every heart for 3 stars.", "每关 3 条命。不被撞到并收集全部爱心可获得 3 星。")}</li>
         </ul>
@@ -520,6 +709,7 @@ export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start,
           <div><dt>🛡️ {t("Hits taken", "被撞次数")} {result.hits}</dt><dd>{result.hits === 0 ? `+${POINTS.noHit}` : ""}</dd></div>
           <div><dt>⏱ {t("Time", "用时")} {result.time}s</dt><dd>+{fmt(result.timeBonus)}</dd></div>
           <div><dt>⭐ {t("Hidden star", "隐藏星星")}</dt><dd>{result.bonus ? "✓" : "—"}</dd></div>
+          {result.enemies > 0 && <div><dt>🐾 {t("Critters defeated", "打倒捣蛋鬼")} {result.kills}/{result.enemies}</dt><dd>{result.kills === result.enemies ? "✓" : ""}</dd></div>}
           <div className="game-total"><dt>{t("Stage score", "本关得分")}</dt><dd>{fmt(result.score)}</dd></div>
         </dl>
         <div className="game-card-actions">

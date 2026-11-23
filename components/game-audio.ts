@@ -81,6 +81,11 @@ export const sfx = {
   power: () => tone({ freq: 300, dur: .35, vol: .08, slide: 900, type: "triangle" }),
   dash: () => noise(.12, .07),
   hit: () => { noise(.2, .12); tone({ freq: 220, dur: .25, vol: .09, slide: -150, type: "sawtooth" }); },
+  swipe: () => { noise(.07, .05); tone({ freq: 900, dur: .08, vol: .04, slide: -500, type: "sawtooth" }); },
+  toss: () => tone({ freq: 500, dur: .16, vol: .05, slide: 500, type: "triangle" }),
+  bonk: () => { tone({ freq: 180, dur: .1, vol: .1, slide: -60 }); tone({ freq: 1200, dur: .05, vol: .04, at: .02 }); },
+  defeat: () => { noise(.18, .06); [784, 988, 1319].forEach((f, i) => tone({ freq: f, dur: .09, vol: .06, at: .04 + i * .05, type: "triangle" })); },
+  coo: () => tone({ freq: 420, dur: .18, vol: .03, slide: -120, type: "sine" }),
   count: (go = false) => tone({ freq: go ? 1047 : 523, dur: go ? .3 : .12, vol: .08 }),
   clear: () => {
     const seq: [number, number][] = [[72, .12], [76, .12], [79, .12], [84, .28], [79, .12], [84, .5]];

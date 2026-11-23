@@ -353,77 +353,90 @@
 
 /* ============ Home: the illustration is the whole page ============ */
 .journey-welcome {
-  --art-paper: #faf4f0;
+  --ar: .8003; /* tall art (phones, portrait tablets) */
   position: relative;
   isolation: isolate;
-  min-height: 100svh;
+  height: 100svh;
+  min-height: 520px;
   overflow: hidden;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  justify-items: center;
-  text-align: center;
-  padding: clamp(58px, 7svh, 76px) 20px max(28px, env(safe-area-inset-bottom));
-  background: var(--art-paper);
+  background: #fbf4ef;
 }
-.welcome-art {
+@media (min-aspect-ratio: 1/1) { .journey-welcome { --ar: 1.6006; } }
+/* The art and the text stage share one box that always covers the screen, so text stays put on the drawing. */
+.welcome-art, .welcome-stage {
   position: absolute;
-  z-index: -1;
   left: 50%;
-  bottom: 0;
-  translate: -50% 0;
-  height: min(72svh, 59vw);
-  width: auto;
+  top: 50%;
+  translate: -50% -50%;
+  aspect-ratio: var(--ar);
+  width: max(100%, calc(max(100svh, 520px) * var(--ar)));
+  height: auto;
   max-width: none;
-  /* Melt the illustration into the page: soft top edge (where the heart is cropped) and soft sides. */
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 7%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to bottom, transparent, #000 7%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
-  mask-composite: intersect;
-  animation: welcome-art-in 1.2s cubic-bezier(.2, .7, .2, 1) both;
 }
-@keyframes welcome-art-in { from { opacity: 0; scale: 1.03; } }
-.welcome-note { position: relative; max-width: 46rem; animation: welcome-up .9s .15s cubic-bezier(.2, .7, .2, 1) both; }
-.welcome-note::before {
-  /* A soft glow of page color so the names stay readable over the fireworks. */
-  content: "";
+.welcome-art { z-index: -1; animation: welcome-art-in 1.4s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes welcome-art-in { from { opacity: 0; scale: 1.025; } }
+.welcome-stage { container-type: size; text-align: center; }
+.welcome-note, .welcome-when, .game-title-actions, .journey-cover-notice {
   position: absolute;
-  z-index: -1;
-  inset: -10% -6% -8%;
-  background: radial-gradient(closest-side, #faf4f0f2 45%, #faf4f099 70%, transparent);
+  left: 50%;
+  translate: -50% 0;
+  width: min(92vw, 78cqh);
 }
+.welcome-note { top: max(7.6cqh, 70px); animation: welcome-up 1s .2s cubic-bezier(.2, .7, .2, 1) both; }
 .welcome-kicker {
-  margin: 0 0 6px !important;
-  font: 600 13px/1.2 var(--sans);
-  letter-spacing: .26em;
+  margin: 0 0 .2em !important;
+  font: 600 clamp(11px, 1.35cqh, 15px)/1.2 var(--sans);
+  letter-spacing: .28em;
   text-transform: uppercase;
   color: var(--umber);
 }
-.journey-root .welcome-note h1 {
+.journey-root .welcome-names {
   margin: 0;
   color: var(--pink);
-  font-size: clamp(60px, 7.6vw, 112px);
-  line-height: .95;
-  letter-spacing: -.01em;
+  font-size: min(12.6vw, 8.4cqh);
+  line-height: 1;
+  letter-spacing: -.005em;
   white-space: nowrap;
+  rotate: -2.5deg;
+  filter: url(#crayon);
 }
-.welcome-note h1 span { color: var(--terracotta); font-size: .72em; padding: 0 .04em; }
-.welcome-when {
-  margin: 10px 0 0 !important;
-  font: 500 clamp(14px, 1.3vw, 16px)/1.5 var(--sans);
-  letter-spacing: .14em;
+.welcome-names span { color: var(--coral); font-size: .7em; padding: 0 .06em; }
+.welcome-swash {
+  display: block;
+  width: min(60vw, 32cqh);
+  height: auto;
+  margin: -.2cqh auto 0;
+  rotate: -2.5deg;
+  overflow: visible;
+  filter: url(#crayon);
+}
+.welcome-swash path {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 320;
+  stroke-dashoffset: 320;
+  animation: welcome-draw 1.1s .9s ease-out forwards;
+}
+@keyframes welcome-draw { to { stroke-dashoffset: 0; } }
+.welcome-when { top: 80.2cqh; animation: welcome-up 1s .4s cubic-bezier(.2, .7, .2, 1) both; }
+.welcome-day {
+  margin: 0 !important;
+  font: 400 min(9vw, 5.2cqh)/1.1 "Wedding Script", Georgia, serif;
+  color: var(--pink);
+  rotate: -1.5deg;
+  filter: url(#crayon);
+}
+.welcome-venue {
+  margin: .5cqh 0 0 !important;
+  font: 600 clamp(11px, 1.35cqh, 15px)/1.3 var(--sans);
+  letter-spacing: .24em;
   text-transform: uppercase;
   color: var(--ink);
 }
-.welcome-when i { font-style: normal; color: var(--pink); }
-.welcome-break { display: none; }
-.game-title-actions {
-  grid-row: 3;
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  animation: welcome-up .9s .35s cubic-bezier(.2, .7, .2, 1) both;
-}
-@keyframes welcome-up { from { opacity: 0; translate: 0 14px; } }
+.game-title-actions { top: 90cqh; display: grid; justify-items: center; animation: welcome-up 1s .6s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes welcome-up { from { opacity: 0; translate: -50% 12px; } }
 .game-start {
   display: inline-flex;
   align-items: center;
@@ -432,60 +445,30 @@
   border-radius: 999px;
   background: var(--pink);
   color: var(--paper);
-  font: 600 clamp(16px, 1.5vw, 18px)/1 var(--sans);
-  letter-spacing: .08em;
+  font: 600 clamp(15px, 1.9cqh, 18px)/1 var(--sans);
+  letter-spacing: .1em;
   text-transform: uppercase;
-  padding: 18px 30px 18px 34px;
-  box-shadow: 0 0 0 6px #faf4f0d9, 0 14px 30px #6e224040;
-  transition: background .2s, transform .2s, box-shadow .2s;
+  padding: 1.15em 2em 1.15em 2.2em;
+  box-shadow: 0 0 0 5px #fbf4efcc, 0 12px 28px #6e224038;
+  transition: background .2s, transform .2s;
 }
 .game-start span { display: inline-block; transition: transform .2s; font-size: 1.15em; }
 .game-start:hover { background: var(--berry-dark); transform: translateY(-2px); }
 .game-start:hover span { transform: translateX(4px); }
 .game-start:active { transform: translateY(1px); }
-.game-title-tag, .game-best {
-  margin: 0 !important;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: #faf4f0d9;
-  font: 500 14px/1.4 var(--sans);
-  color: var(--ink);
-}
-.game-best b { color: var(--pink); font-weight: 700; }
 .journey-cover-notice {
-  grid-row: 2;
-  align-self: center;
+  top: 50cqh;
   margin: 0 !important;
   padding: 10px 16px;
   border-radius: 12px;
-  background: #faf4f0ee;
+  background: #fbf4efee;
   color: var(--berry-dark);
   font-weight: 600;
 }
-@media (max-width: 700px) {
-  .journey-welcome { padding-top: 70px; }
-  /* On phones the art is wider than the screen: size it so both cats stay in view, and fade its bottom
-     edge into the page under the button. */
-  .welcome-art {
-    top: clamp(176px, 25svh, 222px);
-    bottom: auto;
-    height: min(109vw, 50svh);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 84%, transparent);
-    mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 84%, transparent);
-  }
-  .journey-root .welcome-note h1 { font-size: clamp(46px, 13.5vw, 64px); }
-  .welcome-kicker { font-size: 11px; letter-spacing: .22em; }
-  .welcome-when { font-size: 12px; letter-spacing: .12em; }
-  .welcome-when i { display: none; }
-  .welcome-break { display: inline; }
-  .game-title-tag { font-size: 13px; max-width: 32ch; }
-}
-@media (max-height: 560px) and (orientation: landscape) {
-  .welcome-art { height: 100svh; }
-  .journey-root .welcome-note h1 { font-size: clamp(40px, 9svh, 64px); }
-}
+.welcome-filters { position: absolute; width: 0; height: 0; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
-  .welcome-art, .welcome-note, .game-title-actions { animation: none; }
+  .welcome-art, .welcome-note, .welcome-when, .game-title-actions { animation: none; }
+  .welcome-swash path { animation: none; stroke-dashoffset: 0; }
 }
 
 /* ============ Shared chrome in the mood-board palette ============ */

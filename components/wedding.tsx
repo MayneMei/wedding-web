@@ -56,7 +56,7 @@ export default function Wedding({ config, invitation, token, demo = false, inval
   const [results, setResults] = useState<(StageResult | undefined)[]>(() => Array(stops.length).fill(undefined));
   const [arcade, setArcade] = useState(false);
   const [muted, setMute] = useState(false);
-  const [best, setBest] = useState({ score: 0, stars: 0 });
+  const [, setBest] = useState({ score: 0, stars: 0 });
   const [newBest, setNewBest] = useState(false);
   const [board, setBoard] = useState<BoardEntry[] | null>(null);
   const [myRank, setMyRank] = useState<number | null>(null);
@@ -200,21 +200,40 @@ export default function Wedding({ config, invitation, token, demo = false, inval
       <button className="journey-language game-sound" type="button" onClick={toggleSound} aria-pressed={!muted} aria-label={muted ? t("Turn sound on", "打开声音") : t("Turn sound off", "关闭声音")}>{muted ? "🔇" : "🔊"}</button>
     </div>
     {page === 0 && <section className="journey-welcome">
-      <img className="welcome-art" src="/wedding-cover-art.webp" width={1122} height={770} fetchPriority="high"
-        alt={t("Illustration of Maggie and Mayne holding bento boxes under fireworks, with their two cats", "Maggie 和 Mayne 在烟花下捧着便当的插画，旁边是两只猫")} />
-      <header className="welcome-note">
-        <p className="welcome-kicker">{t("Welcome to our wedding", "欢迎参加我们的婚礼")}</p>
-        <h1 tabIndex={-1}>Maggie <span>&amp;</span> Mayne</h1>
-        <p className="welcome-when">{dateLabel(config.date,zh)}<i aria-hidden="true"> · </i><br className="welcome-break" />{config.venue}</p>
-      </header>
-      {invalid && <p className="journey-cover-notice" role="alert">{t("This invitation link is unavailable. Ask Maggie or Mayne for a new link.", "这个邀请链接不可用，请联系 Maggie 或 Mayne。")}</p>}
-      <div className="game-title-actions">
-        <button className="game-start" type="button" aria-label={t("Start the game and open the invitation", "开始游戏，打开请柬")} onClick={startGame}>
-          {t("Start the journey", "开始旅程")} <span aria-hidden="true">→</span>
-        </button>
-        <p className="game-title-tag">{t("Walk through our story with our two cats · a 6-stage road trip", "跟着无牙和煤球，走一遍我们的故事 · 6 关公路冒险")}</p>
-        {best.score > 0 && <p className="game-best">{t("Your best", "你的最高分")} <b>{fmt(best.score)}</b> · {best.stars}/{MAX_STARS} ★</p>}
+      <picture>
+        <source media="(min-aspect-ratio: 1/1)" srcSet="/home-art-wide.webp" width={2244} height={1402} />
+        <img className="welcome-art" src="/home-art-tall.webp" width={1122} height={1402} fetchPriority="high"
+          alt={t("Illustration of Maggie and Mayne holding bento boxes under fireworks, with their two cats", "Maggie 和 Mayne 在烟花下捧着便当的插画，旁边是两只猫")} />
+      </picture>
+      {/* Text sits where the original poster had its hand lettering, on a box that tracks the artwork. */}
+      <div className="welcome-stage">
+        <header className="welcome-note">
+          <p className="welcome-kicker">{t("Welcome to the wedding of", "欢迎参加我们的婚礼")}</p>
+          <h1 tabIndex={-1} className="welcome-names">Maggie <span>&amp;</span> Mayne</h1>
+          <svg className="welcome-swash" viewBox="0 0 300 24" aria-hidden="true">
+            <path d="M6 15 C 60 4, 120 22, 170 12 S 260 6, 294 13" />
+          </svg>
+        </header>
+        <div className="welcome-when">
+          <p className="welcome-day">{dateLabel(config.date, zh)}</p>
+          <p className="welcome-venue">{config.venue}</p>
+        </div>
+        {invalid && <p className="journey-cover-notice" role="alert">{t("This invitation link is unavailable. Ask Maggie or Mayne for a new link.", "这个邀请链接不可用，请联系 Maggie 或 Mayne。")}</p>}
+        <div className="game-title-actions">
+          <button className="game-start" type="button" aria-label={t("Start the game and open the invitation", "开始游戏，打开请柬")} onClick={startGame}>
+            {t("Start the journey", "开始旅程")} <span aria-hidden="true">→</span>
+          </button>
+        </div>
       </div>
+      <svg className="welcome-filters" aria-hidden="true" focusable="false">
+        <filter id="crayon" x="-10%" y="-25%" width="120%" height="150%">
+          <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="warp" />
+          <feDisplacementMap in="SourceGraphic" in2="warp" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="rough" />
+          <feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="1" seed="9" result="grain" />
+          <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -6 4.4" result="tooth" />
+          <feComposite in="rough" in2="tooth" operator="in" />
+        </filter>
+      </svg>
     </section>}
     {page === 1 && <section className="journey-choose">
       <h1 tabIndex={-1}>{t("Choose your character", "选择你的角色")}</h1>

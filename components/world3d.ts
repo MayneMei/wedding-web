@@ -2,7 +2,7 @@
 // cut-out billboards on a paper map, surrounded by toon-shaded 3D props with navy outlines.
 import * as THREE from "three";
 import { DEPTH, pointOnRoute, route, toWorld, type HazardKind, type PowerKind, type Vec } from "./game-levels";
-import { makePalm, makePigeon, makeVacuum, makeYarn, type Kit, type Palm, type Pigeon, type Vacuum } from "./world-critters";
+import { makePigeon, makeVacuum, makeYarn, type Kit, type Pigeon, type Vacuum } from "./world-critters";
 
 export type WorldSetup = {
   stage: number;
@@ -107,6 +107,91 @@ function starGeometry() {
   const geo = new THREE.ExtrudeGeometry(s, { depth: .3, bevelEnabled: true, bevelSize: .12, bevelThickness: .12, bevelSegments: 1 });
   geo.center();
   return geo;
+}
+
+// A single palm tree drawn like the hand-made map stickers: navy outline, cream ringed trunk,
+// olive fronds with light streaks, orange coconuts and a little crayon grain.
+function palmTexture(seed: number) {
+  const w = 320, h = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  const rand = seeded(seed);
+  const navy = "#384c62";
+  const lean = (rand() - .5) * 90;
+  const base = { x: w / 2, y: h - 14 }, top = { x: w / 2 + lean * .6, y: 215 };
+  const ctrl = { x: w / 2 - lean * .6, y: 360 };
+  const at = (t: number) => ({
+    x: (1 - t) ** 2 * base.x + 2 * (1 - t) * t * ctrl.x + t * t * top.x,
+    y: (1 - t) ** 2 * base.y + 2 * (1 - t) * t * ctrl.y + t * t * top.y,
+  });
+  ctx.lineJoin = ctx.lineCap = "round";
+  // Trunk: a tapered ribbon along the curve.
+  const left: { x: number; y: number }[] = [], right: { x: number; y: number }[] = [];
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20, p = at(t), half = 19 - t * 7;
+    left.push({ x: p.x - half, y: p.y }); right.push({ x: p.x + half, y: p.y });
+  }
+  ctx.beginPath();
+  left.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  right.reverse().forEach((p) => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.fillStyle = "#f1deb1"; ctx.strokeStyle = navy; ctx.lineWidth = 7;
+  ctx.fill(); ctx.stroke();
+  ctx.lineWidth = 4;
+  for (let i = 1; i < 9; i++) {
+    const t = i / 9, p = at(t), half = 19 - t * 7;
+    ctx.beginPath(); ctx.moveTo(p.x - half + 2, p.y); ctx.quadraticCurveTo(p.x, p.y + 6, p.x + half - 2, p.y - 1); ctx.stroke();
+  }
+  // Fronds arch up and out from the crown, then droop at the tips, like the sticker's umbrella of leaves.
+  const fronds = 6;
+  for (let k = 0; k < fronds; k++) {
+    const th = Math.PI + (k / (fronds - 1)) * Math.PI + (rand() - .5) * .12; // left → up → right
+    const dir = { x: Math.cos(th), y: Math.sin(th) };
+    const len = 128 + rand() * 18 - Math.abs(dir.y) * 34;
+    const tip = { x: top.x + dir.x * len, y: top.y + dir.y * len * .5 + 46 * Math.abs(dir.x) + 8 };
+    const c1 = { x: top.x + dir.x * len * .35, y: top.y - 46 + dir.y * 26 };
+    const c2 = { x: top.x + dir.x * len * .8, y: top.y - 26 + dir.y * len * .2 };
+    const bez = (t: number) => {
+      const u = 1 - t;
+      return {
+        x: u ** 3 * top.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t ** 3 * tip.x,
+        y: u ** 3 * top.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t ** 3 * tip.y,
+      };
+    };
+    const upper: { x: number; y: number }[] = [], lower: { x: number; y: number }[] = [];
+    for (let i = 0; i <= 16; i++) {
+      const t = i / 16, p = bez(t), q = bez(Math.min(1, t + .02)), r = bez(Math.max(0, t - .02));
+      const tx = q.x - r.x, ty = q.y - r.y, tl = Math.hypot(tx, ty) || 1;
+      const half = 27 * Math.sin(Math.PI * Math.min(1, t * 1.05)) ** .7 * (1 - t * .25);
+      upper.push({ x: p.x - ty / tl * half, y: p.y + tx / tl * half });
+      lower.push({ x: p.x + ty / tl * half * .8, y: p.y - tx / tl * half * .8 });
+    }
+    ctx.beginPath();
+    upper.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    lower.reverse().forEach((p) => ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+    ctx.fillStyle = "#8c9c68"; ctx.strokeStyle = navy; ctx.lineWidth = 7;
+    ctx.fill(); ctx.stroke();
+    // Light streak along the leaf, as in the sticker art.
+    ctx.beginPath();
+    for (let i = 3; i <= 12; i++) { const p = bez(i / 16); if (i === 3) ctx.moveTo(p.x, p.y - 5); else ctx.lineTo(p.x, p.y - 5); }
+    ctx.strokeStyle = "#e3e6cc"; ctx.lineWidth = 4; ctx.stroke();
+  }
+  // Coconuts.
+  [[-16, 12], [14, 14], [0, 30]].forEach(([dx, dy]) => {
+    ctx.beginPath(); ctx.arc(top.x + dx, top.y + dy, 15, 0, Math.PI * 2);
+    ctx.fillStyle = "#ea7440"; ctx.strokeStyle = navy; ctx.lineWidth = 5; ctx.fill(); ctx.stroke();
+  });
+  // Crayon grain, only on the drawn parts.
+  ctx.globalCompositeOperation = "source-atop";
+  for (let i = 0; i < 2600; i++) {
+    ctx.fillStyle = rand() < .5 ? "#ffffff22" : "#00000014";
+    ctx.fillRect(rand() * w, rand() * h, 2, 2);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 // Deterministic pseudo-random numbers so the scenery is the same for every guest.
@@ -225,62 +310,20 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
   scene.add(trail);
 
   // ---------- Stops: standing stickers and pins ----------
-  const palms: Palm[] = [];
-  const twinkles: THREE.Object3D[] = [];
+  // Things that sway in the breeze: the Los Angeles sticker and the palm stickers around it.
+  const swayers: { sprite: THREE.Sprite; phase: number; amount: number }[] = [];
   setup.stops.forEach((stop, i) => {
     const p = toWorld(stop);
-    if (stop.key === "hollywood") scene.add(losAngeles(p));
-    else {
-      const sticker = standee(`/waypoint-${stop.key}.webp`, 13, 24);
-      sticker.position.set(p.x, 0, p.z - 2.6);
-      const shade = blob(6);
-      shade.position.set(p.x, .04, p.z - 2.2);
-      scene.add(sticker, shade);
-    }
+    const sticker = standee(`/waypoint-${stop.key}.webp`, 13, 24);
+    sticker.position.set(p.x, 0, p.z - 2.6);
+    if (stop.key === "hollywood") swayers.push({ sprite: sticker, phase: 0, amount: .035 });
+    const shade = blob(6);
+    shade.position.set(p.x, .04, p.z - 2.2);
     const color = i < setup.stage ? "#5e6038" : i === setup.stage ? "#9b3358" : "#9b9c6c";
     const pin = outlined(new THREE.CylinderGeometry(1.15, 1.25, .5, 28), toon(color), 1.12);
     pin.position.set(p.x, .25, p.z);
-    scene.add(pin);
+    scene.add(sticker, shade, pin);
   });
-
-  // Los Angeles in 3D: a sandy island of swaying palms in front of a setting sun.
-  function losAngeles(p: Vec) {
-    const g = new THREE.Group();
-    g.position.set(p.x, 0, p.z - 3.4);
-    const sand = outlined(new THREE.SphereGeometry(1, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon("#f2dfb4"), 1.03);
-    sand.scale.set(7.2, .9, 3.3);
-    const sun = new THREE.Mesh(new THREE.SphereGeometry(3, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2),
-      toon("#ff6a3d", { emissive: "#8a2d10", emissiveIntensity: .3 }));
-    sun.position.set(4.2, 0, -2.6);
-    sun.scale.set(1, 1, .45);
-    g.add(sand, sun);
-    for (let k = 0; k < 3; k++) {
-      const ray = new THREE.Mesh(new THREE.BoxGeometry(.28, 1.3, .2), toon("#f9c95c", { emissive: "#7a5a00", emissiveIntensity: .4 }));
-      const a = .35 + k * .38;
-      ray.position.set(4.2 + Math.cos(a) * 4.3, Math.sin(a) * 4.3, -2.6);
-      ray.rotation.z = a - Math.PI / 2;
-      g.add(ray);
-      twinkles.push(ray);
-    }
-    ([[-2.8, -.5, 8, -.55, .4], [2.6, -.3, 5.8, .65, 1.9], [.1, .9, 3.8, .3, 3.3]] as const).forEach(([x, z, h, lean, phase]) => {
-      const palm = makePalm(kit, h, lean, phase);
-      palm.group.position.set(x, .55, z);
-      g.add(palm.group);
-      palms.push(palm);
-    });
-    const sparkleGeo = starGeometry();
-    ([[-6.2, 7.8, .45], [6.8, 5.6, .35]] as const).forEach(([x, y, size]) => {
-      const sparkle = new THREE.Mesh(sparkleGeo, toon("#f9c95c", { emissive: "#6b4a00", emissiveIntensity: .45 }));
-      sparkle.position.set(x, y, -1);
-      sparkle.scale.setScalar(size);
-      g.add(sparkle);
-      twinkles.push(sparkle);
-    });
-    const shade = blob(7);
-    shade.position.set(0, .04, .4);
-    g.add(shade);
-    return g;
-  }
 
   // ---------- Scenery: trees, flowers, clouds ----------
   const rand = seeded(20270423);
@@ -300,13 +343,16 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
     if (avoid.some((a) => Math.hypot(a.x - x, a.z - z) < ("seg" in a ? 4.2 : 9.5))) continue;
     placed++;
     // Around Los Angeles the scenery turns into swaying palms.
-    if (laPos && scenicPalms < 4 && Math.hypot(laPos.x - x, laPos.z - z) < 22) {
-      const palm = makePalm(kit, 3.4 + rand() * 1.4, (rand() - .5) * 1.2, rand() * 6);
-      palm.group.position.set(x, 0, z);
-      const shade = blob(1.6);
+    if (laPos && scenicPalms < 5 && Math.hypot(laPos.x - x, laPos.z - z) < 22) {
+      const height = 5.5 + rand() * 2.5;
+      const palm = new THREE.Sprite(new THREE.SpriteMaterial({ map: palmTexture(scenicPalms + 11), transparent: true, alphaTest: .35 }));
+      palm.center.set(.5, 0);
+      palm.scale.set(height * .625, height, 1);
+      palm.position.set(x, 0, z);
+      const shade = blob(1.8);
       shade.position.set(x, .04, z);
-      scene.add(palm.group, shade);
-      palms.push(palm);
+      scene.add(palm, shade);
+      swayers.push({ sprite: palm, phase: rand() * 6, amount: .05 });
       scenicPalms++;
       continue;
     }
@@ -729,10 +775,10 @@ export function createWorld(canvas: HTMLCanvasElement, setup: WorldSetup) {
       sprite.position.set(shot.x, 1.7, shot.z);
       sprite.material.rotation = shot.spin;
     });
-    palms.forEach((palm) => palm.animate(reduce ? 0 : time));
     if (!reduce) {
       canopies.forEach((c) => { c.rotation.z = Math.sin(time * 1.3 + (c.userData.phase as number)) * .05; c.rotation.x = Math.sin(time * 1.1 + (c.userData.phase as number) * 2) * .03; });
-      twinkles.forEach((t, k) => { t.scale.setScalar((k < 3 ? 1 : .4) * (1 + Math.sin(time * 3 + k * 1.3) * .18)); });
+      // Sprites rotate around their anchor (the base), so a small rotation reads as swaying in the wind.
+      swayers.forEach((s) => { s.sprite.material.rotation = (Math.sin(time * 1.1 + s.phase) + Math.sin(time * 2.3 + s.phase * 2) * .4) * s.amount; });
     }
     clouds.forEach((c, i) => { c.position.x += f.dt * (.6 + i * .1); if (c.position.x > W + 30) c.position.x = -30; });
     // Camera

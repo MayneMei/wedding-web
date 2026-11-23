@@ -1,5 +1,4 @@
-// Hand-built low-poly models for the 3D map: plaza pigeons, a robot vacuum, a rolling yarn ball and
-// swaying Los Angeles palm trees. Everything is built facing +z so callers can turn it with rotation.y.
+// Hand-built low-poly models for the 3D map: plaza pigeons, a robot vacuum and a rolling yarn ball. Everything is built facing +z so callers can turn it with rotation.y.
 import * as THREE from "three";
 
 export type Kit = {
@@ -8,7 +7,6 @@ export type Kit = {
   blob: (radius: number) => THREE.Mesh;
 };
 
-const OUTLINE = 0x384c62;
 
 function at<T extends THREE.Object3D>(obj: T, x: number, y: number, z: number) {
   obj.position.set(x, y, z);
@@ -252,89 +250,4 @@ export function makeYarn(kit: Kit): Yarn {
   const tail = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, .06, 5), strand);
   group.add(ball, tail);
   return { group, ball };
-}
-
-// ---------------------------------------------------------------------------------------------
-// Palm tree in the style of the Los Angeles sticker: cream ringed trunk, olive fronds, orange coconuts.
-export type Palm = { group: THREE.Group; animate: (time: number) => void };
-
-function frondGeometry(length: number, width: number) {
-  const geo = new THREE.PlaneGeometry(length, width, 10, 2);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i) + length / 2; // 0 at the crown, `length` at the tip
-    const y = pos.getY(i);
-    const u = x / length;
-    const taper = Math.sin(Math.PI * Math.min(1, u * 1.05)) * (1 - u * .35);
-    // Serrated edge: little notches like the sticker's leaflets.
-    const notch = Math.abs(y) > width * .3 ? (Math.floor(u * 9) % 2 ? .82 : 1) : 1;
-    pos.setXYZ(i, x, -u * u * length * .55, y * taper * notch);
-  }
-  geo.computeVertexNormals();
-  return geo;
-}
-
-export function makePalm(kit: Kit, height: number, lean: number, phase: number): Palm {
-  const { toon, outlined } = kit;
-  const group = new THREE.Group();
-  const trunk = new THREE.Group();
-  group.add(trunk);
-  const segments = Math.max(5, Math.round(height / 1.1));
-  const segH = height / segments;
-  const trunkMat = toon("#f1deb1");
-  let top = new THREE.Vector3();
-  for (let i = 0; i < segments; i++) {
-    const u = i / segments;
-    const r = .5 - u * .2;
-    const seg = outlined(new THREE.CylinderGeometry(r * .92, r, segH * .96, 9), trunkMat, 1.1);
-    const x = lean * u * u * height * .35;
-    seg.position.set(x, segH * (i + .5), 0);
-    seg.rotation.z = -lean * u * .5;
-    trunk.add(seg);
-    top = new THREE.Vector3(lean * ((i + 1) / segments) ** 2 * height * .35, segH * (i + 1), 0);
-  }
-
-  const crown = new THREE.Group();
-  crown.position.copy(top);
-  trunk.add(crown);
-  const leaf = toon("#8c9c68", { side: THREE.DoubleSide });
-  const edge = new THREE.MeshBasicMaterial({ color: OUTLINE, side: THREE.DoubleSide });
-  const fronds: THREE.Group[] = [];
-  const count = 7;
-  const length = 2.2 + height * .2;
-  const geo = frondGeometry(length, 1.05);
-  for (let k = 0; k < count; k++) {
-    const pivot = new THREE.Group();
-    pivot.rotation.y = (k / count) * Math.PI * 2 + phase;
-    const tilt = new THREE.Group();
-    tilt.rotation.z = .35 + (k % 2) * .12;
-    const blade = new THREE.Mesh(geo, leaf);
-    blade.castShadow = true;
-    const rim = new THREE.Mesh(geo, edge);
-    rim.scale.set(1.02, 1, 1.07);
-    rim.position.y = -.05;
-    tilt.add(rim, blade);
-    pivot.add(tilt);
-    crown.add(pivot);
-    fronds.push(tilt);
-  }
-  const nut = toon("#ff6a3d");
-  for (let k = 0; k < 3; k++) {
-    const coconut = outlined(new THREE.SphereGeometry(.3, 10, 8), nut, 1.12);
-    coconut.position.set(Math.sin(k * 2.1) * .32, -.3, Math.cos(k * 2.1) * .32);
-    crown.add(coconut);
-  }
-
-  return {
-    group,
-    animate(time) {
-      const gust = Math.sin(time * .9 + phase) * .5 + Math.sin(time * 2.3 + phase * 2) * .25;
-      trunk.rotation.z = gust * .035;
-      trunk.rotation.x = Math.sin(time * .7 + phase) * .02;
-      crown.rotation.y = Math.sin(time * .5 + phase) * .12;
-      fronds.forEach((f, k) => {
-        f.rotation.z = .35 + (k % 2) * .12 + Math.sin(time * 3.1 + k * 1.7 + phase) * .09 + gust * .06;
-      });
-    },
-  };
 }

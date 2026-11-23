@@ -514,3 +514,5 @@
 .game-card-actions .game-go { white-space: nowrap; padding-inline: 20px; }
 .game-newbest { margin-left: 12px !important; vertical-align: middle; letter-spacing: .08em; }
 @media (max-width: 400px) { .game-card-actions .journey-link { font-size: 14px; } }
+.game-newbest { animation: game-pill 1.2s ease-in-out infinite !important; }
+@keyframes game-pill { 50% { opacity: .65; } }

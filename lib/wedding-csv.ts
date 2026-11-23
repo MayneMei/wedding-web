@@ -81,13 +81,14 @@ export function parseInvitationsCsv(source: string): GroupInput[] {
 
 export function invitationsCsv(invitations: AdminInvite[]) {
   const statusLabel = { pending: "Pending", yes: "Attending", no: "Declined" };
-  const rows = [["Invite group", "Guest", "Status", "Dietary needs", "Note", "Wedding side", "Respondent", "Contact"]];
+  const rows = [["Invite group", "Guest", "Status", "Dietary needs", "Headshot", "Note", "Wedding side", "Respondent", "Contact"]];
   for (const group of invitations) {
-    for (const guest of group.guests) {
-      rows.push([group.groupName, guest.name, statusLabel[guest.status], guest.dietary, group.note, group.journey?.side ?? "", group.journey?.name ?? "", group.journey?.contact ?? ""]);
-    }
+    const photo = (slot: string) => group.photos?.includes(slot) ? "Yes" : "";
+    group.guests.forEach((guest, index) => {
+      rows.push([group.groupName, guest.name, statusLabel[guest.status], guest.dietary, photo(String(index)), group.note, group.journey?.side ?? "", group.journey?.name ?? "", group.journey?.contact ?? ""]);
+    });
     if (group.plusOne && group.companion.status === "yes") {
-      rows.push([group.groupName, group.companion.name, "Attending", group.companion.dietary, group.note, group.journey?.side ?? "", group.journey?.name ?? "", group.journey?.contact ?? ""]);
+      rows.push([group.groupName, group.companion.name, "Attending", group.companion.dietary, photo("companion"), group.note, group.journey?.side ?? "", group.journey?.name ?? "", group.journey?.contact ?? ""]);
     }
   }
   const cell = (value: string) => {

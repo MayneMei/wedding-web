@@ -13,6 +13,8 @@ export type Invite = Omit<Reply, "guests"> & {
   guests: StoredGuest[];
   plusOne: boolean;
   updatedAt: string | null;
+  /** Photo slots ("0".."11" or "companion") that already have a headshot. */
+  photos?: string[];
 };
 
 export type AdminInvite = Invite & { id: string; token: string };

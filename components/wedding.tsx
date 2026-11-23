@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { dateLabel, emptyCompanion, type GuestSettings, type Invite, type Reply } from "@/lib/wedding-shared";
 import { useWeddingLanguage } from "./wedding-guest-ui";
 import { replyError } from "./reply-form";
+import { HeadshotUpload } from "./headshot-upload";
 import "./journey.css";
 import "./game.css";
 import { StageGame } from "./stage-game";
@@ -270,7 +271,16 @@ export default function Wedding({ config, invitation, token, demo = false, inval
           {names.map((guest,i)=><label key={i}>{i === 0 && !invitation && name ? name : guest.name} · {t("Will you attend?", "是否出席？")}<select required value={guests[i].status === "pending" ? "" : guests[i].status} onChange={e=>setGuests(guests.map((g,j)=>j===i?{...g,status:e.target.value as "yes"|"no"}:g))}><option value="">{t("Please choose", "请选择")}</option><option value="yes">{t("Joyfully attending","会出席")}</option><option value="no">{t("Unable to attend","无法出席")}</option></select></label>)}
           {attends && <><label>{t("Will you bring a plus-one?", "会带一位同行宾客（+1）吗？")}<select required value={companion.status==="pending"?"":companion.status} onChange={e=>setCompanion({...companion,status:e.target.value as "yes"|"no"})}><option value="">{t("Please choose","请选择")}</option><option value="yes">{t("Yes","会")}</option><option value="no">{t("No","不会")}</option></select></label>{companion.status==="yes"&&<label>{t("Plus-one name","同行宾客姓名")}<input required maxLength={100} value={companion.name} onChange={e=>setCompanion({...companion,name:e.target.value})}/></label>}</>}
         </>}
-        {!arcade && step === 2 && <>{!attends && <p>{t("No dietary information needed if you’re unable to attend.", "如果无法出席，可以直接继续。")}</p>}{guests.map((guest,i)=>guest.status==="yes"&&<label key={i}>{names[i].name} · {t("Dietary needs (optional)","饮食限制（选填）")}<input maxLength={350} value={guest.dietary} onChange={e=>setGuests(guests.map((g,j)=>j===i?{...g,dietary:e.target.value}:g))}/></label>)}{attends&&companion.status==="yes"&&<label>{companion.name} · {t("Dietary needs (optional)","饮食限制（选填）")}<input maxLength={350} value={companion.dietary} onChange={e=>setCompanion({...companion,dietary:e.target.value})}/></label>}</>}
+        {!arcade && step === 2 && <>
+          <p className="headshot-intro">{t("📸 A little surprise: we’re making a one-of-a-kind gift for every guest at the wedding. Upload a clear, front-facing photo of yourself so we can make yours.", "📸 小惊喜：我们会在婚礼上为每位宾客准备一份专属礼物。上传一张你本人清晰的正脸照，我们就能为你定制。")}</p>
+          {!attends ? <p>{t("Since you can’t make it, no photo needed. Just continue.", "既然无法出席，就不用上传照片啦，直接继续吧。")}</p> : <div className="headshot-list">
+            {guests.map((guest, i) => guest.status === "yes" && <HeadshotUpload key={i} slot={String(i)} zh={zh} token={token} demo={demo} closed={closed}
+              name={i === 0 && !invitation && name ? name : names[i].name} uploaded={Boolean(invitation?.photos?.includes(String(i)))} />)}
+            {companion.status === "yes" && <HeadshotUpload slot="companion" zh={zh} token={token} demo={demo} closed={closed}
+              name={companion.name || t("Your plus-one", "同行宾客")} uploaded={Boolean(invitation?.photos?.includes("companion"))} />}
+          </div>}
+          <p className="headshot-note">{t("Optional. Only Maggie & Mayne can see it.", "选填。照片只有 Maggie 和 Mayne 能看到。")}</p>
+        </>}
         {!arcade && step === 3 && <label>{t("A note for Maggie & Mayne (optional)","想对 Maggie 和 Mayne 说的话（选填）")}<textarea maxLength={800} value={note} onChange={e=>setNote(e.target.value)}/></label>}
         {!arcade && step === 5 && <dl className="journey-review">
           <div><dt>{t("Name & contact", "姓名与联系方式")}</dt><dd>{name} · {contact}</dd></div>

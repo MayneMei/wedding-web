@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDb } from "@/db";
-import { gameScores, invitations, weddingSettings } from "@/db/schema";
+import { gameScores, guestPhotos, invitations, weddingSettings } from "@/db/schema";
 import { defaultSettings, emptyCompanion } from "./wedding-shared";
 
 export const answerSchema = z.object({
@@ -122,8 +122,14 @@ export async function invitationById(id: string) {
 }
 
 export async function allInvitations() {
-  const rows = await getDb().select().from(invitations).orderBy(asc(invitations.groupName));
-  return rows.map(adminInvite);
+  const db = getDb();
+  const [rows, photos] = await Promise.all([
+    db.select().from(invitations).orderBy(asc(invitations.groupName)),
+    db.select({ invitationId: guestPhotos.invitationId, slot: guestPhotos.slot }).from(guestPhotos),
+  ]);
+  const slots = new Map<string, string[]>();
+  for (const photo of photos) slots.set(photo.invitationId, [...(slots.get(photo.invitationId) ?? []), photo.slot]);
+  return rows.map((row) => ({ ...adminInvite(row), photos: slots.get(row.id) ?? [] }));
 }
 
 export async function createInvitations(groups: z.infer<typeof groupSchema>[]) {
@@ -220,4 +226,86 @@ export async function leaderboard(limit = 10, invitationId?: string): Promise<Le
     name: row.name, score: row.score, stars: row.stars, cat: row.cat === "groom" ? "groom" : "bride",
     ...(invitationId && row.invitationId === invitationId ? { you: true } : {}),
   }));
+}
+
+// ---------- Guest headshots for the personalized gifts ----------
+export const PHOTO_MAX_BYTES = 450_000;
+export const photoSlotSchema = z.union([z.literal("companion"), z.string().regex(/^(?:[0-9]|1[01])$/)]);
+
+function sniffImage(bytes: Uint8Array) {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  const tag = (from: number) => String.fromCharCode(...bytes.slice(from, from + 4));
+  if (tag(0) === "RIFF" && tag(8) === "WEBP") return "image/webp";
+  return null;
+}
+
+/** Reads a same-origin image upload of at most PHOTO_MAX_BYTES. Returns null if it isn't one. */
+export async function readImage(request: Request) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) return null;
+  if (request.headers.get("sec-fetch-site") === "cross-site") return null;
+  if (Number(request.headers.get("content-length") ?? 0) > PHOTO_MAX_BYTES || !request.body) return null;
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > PHOTO_MAX_BYTES) { await reader.cancel(); return null; }
+      chunks.push(value);
+    }
+  } catch {
+    return null;
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.byteLength; }
+  const contentType = sniffImage(bytes);
+  return contentType ? { bytes, contentType } : null;
+}
+
+/** The display name for a photo slot, or null if this invitation has no such guest. */
+export function photoSlotName(row: Record, slot: string) {
+  if (slot === "companion") return row.companion.name || `${row.guests[0]?.name ?? row.groupName} +1`;
+  return row.guests[Number(slot)]?.name ?? null;
+}
+
+export async function photoSlots(invitationId: string) {
+  const rows = await getDb().select({ slot: guestPhotos.slot }).from(guestPhotos).where(eq(guestPhotos.invitationId, invitationId));
+  return rows.map((row) => row.slot);
+}
+
+export async function savePhoto(row: Record, slot: string, image: { bytes: Uint8Array; contentType: string }) {
+  const name = photoSlotName(row, slot);
+  if (!name) return false;
+  const value = { name, contentType: image.contentType, data: Buffer.from(image.bytes), updatedAt: new Date().toISOString() };
+  await getDb().insert(guestPhotos).values({ invitationId: row.id, slot, ...value })
+    .onConflictDoUpdate({ target: [guestPhotos.invitationId, guestPhotos.slot], set: value });
+  return true;
+}
+
+export async function getPhoto(invitationId: string, slot: string) {
+  const [photo] = await getDb().select().from(guestPhotos)
+    .where(and(eq(guestPhotos.invitationId, invitationId), eq(guestPhotos.slot, slot)));
+  return photo;
+}
+
+export async function deletePhoto(invitationId: string, slot: string) {
+  await getDb().delete(guestPhotos).where(and(eq(guestPhotos.invitationId, invitationId), eq(guestPhotos.slot, slot)));
+}
+
+export function photoResponse(photo: typeof guestPhotos.$inferSelect, download?: string) {
+  const headers: HeadersInit = {
+    "Content-Type": photo.contentType,
+    "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff",
+  };
+  if (download) {
+    const ext = photo.contentType.split("/")[1].replace("jpeg", "jpg");
+    headers["Content-Disposition"] = `attachment; filename="${download}.${ext}"; filename*=UTF-8''${encodeURIComponent(`${download}.${ext}`)}`;
+  }
+  return new Response(new Uint8Array(photo.data), { headers });
 }

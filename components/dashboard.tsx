@@ -190,6 +190,16 @@ export default function Dashboard({ initialInvitations, initialSettings, role }:
           <p>{group.guests.map((guest) => `${guest.name} · ${states[guest.status]}`).join("  /  ")}</p>
           {group.plusOne && <p>Plus-one{group.companion.name ? ` · ${group.companion.name}` : ""} · {states[group.companion.status]}</p>}
           {group.journey && <p>{group.journey.side === "bride" ? "Bride’s side" : "Groom’s side"} · {group.journey.name} · {group.journey.contact}</p>}
+          {Boolean(group.photos?.length) && <div className="admin-photos" aria-label="Headshots for gifts">
+            {group.photos!.map((slot) => {
+              const who = slot === "companion" ? (group.companion.name || "Plus-one") : (group.guests[Number(slot)]?.name ?? "Guest");
+              const src = `/api/admin/photo?id=${group.id}&slot=${slot}`;
+              return <figure key={slot}>
+                <img src={src} alt={`Headshot of ${who}`} width={72} height={72} loading="lazy" />
+                <figcaption>{who} · <a href={`${src}&download=1`} download>Download</a></figcaption>
+              </figure>;
+            })}
+          </div>}
           {showLink === group.id && <code>{inviteUrl(group.token)}</code>}
           {showEmail === group.id && <label className="input-label">Invitation email text
             <textarea readOnly rows={6} value={draft(group).plain} onFocus={(event) => event.target.select()} />

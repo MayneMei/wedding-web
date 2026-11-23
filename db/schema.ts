@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { blob, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const invitations = sqliteTable("invitations", {
   id: text("id").primaryKey(),
@@ -27,6 +27,16 @@ export const gameScores = sqliteTable("game_scores", {
   cat: text("cat").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+// One headshot per guest (slot "0".."11") or plus-one (slot "companion"), for the personalized wedding gifts.
+export const guestPhotos = sqliteTable("guest_photos", {
+  invitationId: text("invitation_id").notNull(),
+  slot: text("slot").notNull(),
+  name: text("name").notNull(),
+  contentType: text("content_type").notNull(),
+  data: blob("data", { mode: "buffer" }).notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [primaryKey({ columns: [table.invitationId, table.slot] })]);
 
 export type Status = "pending" | "yes" | "no";
 export type GuestAnswer = { status: Status; dietary: string };

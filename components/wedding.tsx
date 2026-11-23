@@ -10,7 +10,7 @@ import "./game.css";
 import { StageGame } from "./stage-game";
 import { isMuted, setMuted, sfx, startMusic, unlockAudio } from "./game-audio";
 import {
-  MAX_STARS, achievements, cats, rank, readBest, route, saveBest, totals,
+  MAX_STARS, achievements, cats, rank, readBest, saveBest, totals,
   type StageResult,
 } from "./game-levels";
 
@@ -234,19 +234,10 @@ export default function Wedding({ config, invitation, token, demo = false, inval
         <h1 tabIndex={-1}>{t("Our road to April", "一路走到四月")}</h1>
         {arcade && <p className="game-mode">{t("Score attack", "冲分模式")}</p>}
       </header>
-      <StageGame key={step + "-" + replay} paused={popup} start={step ? stops[step-1] : {x:3,y:80}} goal={stop} stage={step} zh={zh} title={t(stop.title,stop.zh)} cat={side} catImg={side==="bride"?"/journey-toothless-walk.webp":"/journey-coltball-walk.webp"} onClear={stageCleared}>
-          <figure className="journey-beijing">
-            <img src="/waypoint-beijing.webp" alt="" draggable={false} />
-            <figcaption>{t("Beijing", "北京")}</figcaption>
-          </figure>
-          <svg className="journey-trail" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-            {route.map((path, i) => <path key={path} d={path} />)}
-          </svg>
-          {stops.map((place,i) => <div key={place.key} className="journey-stop" data-complete={i < step} aria-current={i === step ? "step" : undefined} style={{left:place.x+"%",top:place.y+"%"}}>
-            <img className="journey-sticker" src={`/waypoint-${place.key}.webp`} alt="" draggable={false} />
-            <span className="journey-pin">{i < step ? "✓" : i+1}</span>{results[i] && <span className="game-pin-stars" aria-label={`${results[i]!.stars}/3`}>{"★".repeat(results[i]!.stars)}{"☆".repeat(3 - results[i]!.stars)}</span>}<span className="journey-stop-name">{t(place.title,place.zh)}</span>
-          </div>)}
-      </StageGame>
+      <StageGame key={step + "-" + replay} paused={popup} start={step ? stops[step-1] : {x:3,y:80}} stage={step} zh={zh}
+        stops={stops.map((place) => ({ key: place.key, title: t(place.title, place.zh), x: place.x, y: place.y }))}
+        stars={results.map((r) => r?.stars)}
+        cat={side} catImg={side==="bride"?"/journey-toothless-walk.webp":"/journey-coltball-walk.webp"} onClear={stageCleared} />
       {popup && <dialog ref={dialog} onCancel={(event) => { event.preventDefault(); previous(); }} className="journey-dialog" aria-labelledby="stop-title"><form onSubmit={continueTrip}>
         <p className="journey-kicker">{t("Stop", "第")} {step+1} {t("of", "站，共")} {stops.length} {zh ? "站" : ""}{results[step] && <span className="game-kicker-score"> · <b>{"★".repeat(results[step]!.stars)}{"☆".repeat(3 - results[step]!.stars)}</b> · {fmt(results[step]!.score)} {t("pts", "分")}</span>}</p>
         <img className="journey-dialog-sticker" src={`/waypoint-${stop.key}.webp`} alt="" />

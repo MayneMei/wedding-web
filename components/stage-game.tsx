@@ -3,58 +3,68 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sfx } from "./game-audio";
 import {
-  MAX_COMBO, POINTS, cats, clampY, keepsakes, pointOnRoute, stageDefs,
-  type CatId, type Point, type StageResult,
+  DEPTH, MAX_COMBO, POINTS, cats, clampY, keepsakes, pointOnRoute, stageDefs, toWorld,
+  type CatId, type Point, type StageResult, type Vec,
 } from "./game-levels";
+import type { World } from "./world3d";
 
+export type StopInfo = { key: string; title: string; x: number; y: number };
 type Props = {
   stage: number;
   paused: boolean;
   zh: boolean;
   cat: CatId;
   catImg: string;
-  title: string;
+  stops: StopInfo[];
+  stars: (number | undefined)[];
   start: Point;
-  goal: Point;
   onClear: (result: StageResult) => void;
-  children: React.ReactNode;
 };
 type Phase = "intro" | "count" | "play" | "clear" | "over";
 
 const MAX_LIVES = 3;
-const directions: { [key: string]: Point } = {
-  ArrowUp: { x: 0, y: -1 }, w: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 }, s: { x: 0, y: 1 },
-  ArrowLeft: { x: -1, y: 0 }, a: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 }, d: { x: 1, y: 0 },
+const directions: { [key: string]: Vec } = {
+  ArrowUp: { x: 0, z: -1 }, w: { x: 0, z: -1 }, ArrowDown: { x: 0, z: 1 }, s: { x: 0, z: 1 },
+  ArrowLeft: { x: -1, z: 0 }, a: { x: -1, z: 0 }, ArrowRight: { x: 1, z: 0 }, d: { x: 1, z: 0 },
 };
+const BOUNDS = { minX: 1, maxX: 99, minZ: 15 * DEPTH, maxZ: 88 * DEPTH };
 const fmt = (n: number) => n.toLocaleString("en-US");
+const dist = (a: Vec, b: Vec) => Math.hypot(a.x - b.x, a.z - b.z);
 
-export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, onClear, children }: Props) {
+export function StageGame({ stage, paused, zh, cat, catImg, stops, stars, start, onClear }: Props) {
   const t = (en: string, cn: string) => zh ? cn : en;
   const def = stageDefs[stage];
   const stats = cats[cat];
   const [icon, keepsakeEn, keepsakeZh] = keepsakes[stage];
+  const goalStop = stops[stage];
+  const title = goalStop.title;
 
-  const layout = useMemo(() => ({
-    hearts: Array.from({ length: def.hearts }, (_, k) => pointOnRoute(stage, .12 + .76 * (k + .5) / def.hearts)),
-    item: { x: (start.x + goal.x) / 2, y: Math.min(79, (start.y + goal.y) / 2 + (stage % 2 ? 9 : -10)) },
-    bonus: (() => { const p = pointOnRoute(stage, def.bonus.t); return { x: p.x, y: clampY(p.y + def.bonus.off) }; })(),
-    powers: def.powers.map((power) => { const p = pointOnRoute(stage, power.t); return { ...power, x: p.x, y: clampY(p.y + power.off) }; }),
-    hazards: def.hazards.map((hazard) => ({ ...hazard, home: pointOnRoute(stage, hazard.t) })),
-  }), [def, stage, start.x, start.y, goal.x, goal.y]);
+  const { x: sx, y: sy } = start;
+  const layout = useMemo(() => {
+    const start = { x: sx, y: sy };
+    const goal = { x: goalStop.x, y: goalStop.y };
+    const offset = (t: number, off: number) => { const p = pointOnRoute(stage, t); return toWorld({ x: p.x, y: clampY(p.y + off) }); };
+    return {
+      start: toWorld(start),
+      goal: toWorld(goal),
+      hearts: Array.from({ length: def.hearts }, (_, k) => toWorld(pointOnRoute(stage, .12 + .76 * (k + .5) / def.hearts))),
+      item: toWorld({ x: (start.x + goal.x) / 2, y: Math.min(79, (start.y + goal.y) / 2 + (stage % 2 ? 9 : -10)) }),
+      bonus: offset(def.bonus.t, def.bonus.off),
+      powers: def.powers.map((power) => ({ kind: power.kind, pos: offset(power.t, power.off) })),
+      hazards: def.hazards.map((hazard) => ({ ...hazard, home: toWorld(pointOnRoute(stage, hazard.t)) })),
+    };
+  }, [def, stage, sx, sy, goalStop.x, goalStop.y]);
 
-  const board = useRef<HTMLDivElement>(null);
-  const sprite = useRef<HTMLDivElement>(null);
-  const pickup = useRef<HTMLButtonElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const layer = useRef<HTMLDivElement>(null);
+  const world = useRef<World | null>(null);
+  const labelEls = useRef<(HTMLDivElement | null)[]>([]);
   const scoreEl = useRef<HTMLElement>(null);
   const timeEl = useRef<HTMLElement>(null);
   const comboEl = useRef<HTMLElement>(null);
   const dashEl = useRef<HTMLButtonElement>(null);
-  const heartEls = useRef<(HTMLSpanElement | null)[]>([]);
-  const powerEls = useRef<(HTMLSpanElement | null)[]>([]);
-  const hazardEls = useRef<(HTMLDivElement | null)[]>([]);
-  const bonusEl = useRef<HTMLSpanElement>(null);
   const keys = useRef(new Set<string>());
-  const target = useRef<Point | null>(null);
+  const target = useRef<Vec | null>(null);
   const dashRequest = useRef(false);
   const dragging = useRef(false);
 
@@ -67,6 +77,8 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
   const [tangled, setTangled] = useState(false);
   const [hint, setHint] = useState(false);
   const [result, setResult] = useState<StageResult | null>(null);
+  const [noWebGL, setNoWebGL] = useState(false);
+  const [ready, setReady] = useState(false);
   const clear = useRef(onClear);
   const say = useRef(t);
   useEffect(() => {
@@ -87,6 +99,32 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
     begin();
   }
 
+  // Build the 3D diorama once per stage. three.js is loaded lazily so the title screen stays light.
+  useEffect(() => {
+    let cancelled = false;
+    let observer: ResizeObserver | undefined;
+    import("./world3d").then(({ createWorld }) => {
+      if (cancelled || !canvas.current) return;
+      try {
+        world.current = createWorld(canvas.current, {
+          stage, stops, hearts: layout.hearts, bonus: layout.bonus, powers: layout.powers,
+          hazards: layout.hazards.map((h) => ({ icon: h.icon, pos: h.home })),
+          item: layout.item, itemIcon: icon, goal: layout.goal, start: layout.start, catImg,
+        });
+      } catch {
+        setNoWebGL(true);
+        return;
+      }
+      const el = canvas.current;
+      observer = new ResizeObserver(() => world.current?.resize());
+      observer.observe(el);
+      setReady(true);
+    }).catch(() => { if (!cancelled) setNoWebGL(true); });
+    return () => { cancelled = true; observer?.disconnect(); world.current?.dispose(); world.current = null; };
+    // The stage's layout is fixed for the lifetime of this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 3‑2‑1‑GO countdown.
   useEffect(() => {
     if (phase !== "count" || paused) return;
@@ -103,47 +141,49 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
 
   // Main game loop.
   useEffect(() => {
-    if (paused) return;
-    const world = board.current!, catEl = sprite.current!, viewport = world.parentElement!;
+    const w = world.current;
+    if (paused || !w) return;
+    const overlay = layer.current!;
     const held = keys.current;
     const s = {
-      p: { ...start }, got: false, done: false, dir: { x: 1, y: 0 },
+      p: { ...layout.start }, got: false, done: false, dir: { x: 1, z: 0 }, face: 1,
       hearts: layout.hearts.map(() => false), powers: layout.powers.map(() => false), bonus: false,
       score: 0, combo: 0, comboTimer: 0, bestCombo: 0, hits: 0, lives: MAX_LIVES,
-      inv: 0, speedT: 0, shieldT: 0, dashT: 0, dashCd: 0, time: 0, age: 0, hinted: false,
+      inv: 0, speedT: 0, shieldT: 0, dashT: 0, dashCd: 0, time: 0, age: 0, hinted: false, walking: false,
       chase: layout.hazards.map((h) => ({ ...h.home })),
+      chaseFace: layout.hazards.map(() => 1),
     };
-    heartEls.current.forEach((el) => el?.classList.remove("is-taken"));
-    powerEls.current.forEach((el) => el?.classList.remove("is-taken"));
-    bonusEl.current?.classList.remove("is-taken");
-    catEl.className = "journey-traveler";
+    w.reset();
     if (scoreEl.current) scoreEl.current.textContent = "0";
     target.current = null;
     dashRequest.current = false;
 
     let frame = 0, last = 0;
 
-    function pop(x: number, y: number, text: string, kind = "") {
+    function place(el: HTMLElement, pos: Vec, y: number) {
+      const at = w!.project(pos, y);
+      el.style.left = at.x + "px";
+      el.style.top = at.y + "px";
+    }
+    function pop(pos: Vec, text: string, kind = "", y = 4) {
       const el = document.createElement("span");
       el.className = "game-pop " + kind;
       el.textContent = text;
-      el.style.left = x + "%";
-      el.style.top = y + "%";
+      place(el, pos, y);
       el.addEventListener("animationend", () => el.remove());
-      world.appendChild(el);
+      overlay.appendChild(el);
     }
-    function burst(x: number, y: number, symbol: string) {
-      for (let i = 0; i < 7; i++) {
+    function burst(pos: Vec, symbol: string, y = 1.5) {
+      for (let i = 0; i < 8; i++) {
         const el = document.createElement("span");
-        const angle = (Math.PI * 2 * i) / 7 + Math.random() * .5;
+        const angle = (Math.PI * 2 * i) / 8 + Math.random() * .5;
         el.className = "game-spark";
         el.textContent = symbol;
-        el.style.left = x + "%";
-        el.style.top = y + "%";
-        el.style.setProperty("--dx", Math.cos(angle) * (34 + Math.random() * 26) + "px");
-        el.style.setProperty("--dy", Math.sin(angle) * (34 + Math.random() * 26) + "px");
+        place(el, pos, y);
+        el.style.setProperty("--dx", Math.cos(angle) * (38 + Math.random() * 28) + "px");
+        el.style.setProperty("--dy", Math.sin(angle) * (38 + Math.random() * 28) + "px");
         el.addEventListener("animationend", () => el.remove());
-        world.appendChild(el);
+        overlay.appendChild(el);
       }
     }
     function addScore(points: number) {
@@ -160,6 +200,10 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
       comboEl.current.textContent = s.combo > 1 ? `×${s.combo} COMBO` : "";
       comboEl.current.dataset.level = String(s.combo);
     }
+    function shake() {
+      const el = canvas.current!;
+      el.classList.remove("is-shaking"); void el.offsetWidth; el.classList.add("is-shaking");
+    }
 
     function key(e: KeyboardEvent, down: boolean) {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -169,25 +213,24 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
         if (down && !e.repeat) dashRequest.current = true;
         return;
       }
-      if (!directions[k]) return;
-      if (phaseRef.current !== "play") return;
+      if (!directions[k] || phaseRef.current !== "play") return;
       e.preventDefault();
       if (down) { held.add(k); target.current = null; } else held.delete(k);
     }
     const press = (e: KeyboardEvent) => key(e, true), release = (e: KeyboardEvent) => key(e, false);
     const blur = () => { held.clear(); target.current = null; };
 
-    function hit(from: Point, w: number, h: number) {
+    function hit(from: Vec) {
       s.lives -= 1; s.hits += 1; s.inv = 1.4; s.combo = 0; showCombo();
       setLives(s.lives);
       sfx.hit();
-      const dx = (s.p.x - from.x) * w / 100, dy = (s.p.y - from.y) * h / 100;
-      const len = Math.hypot(dx, dy) || 1;
-      s.p.x = Math.min(98, Math.max(2, s.p.x + dx / len * 55 / w * 100));
-      s.p.y = Math.min(88, Math.max(15, s.p.y + dy / len * 55 / h * 100));
+      const dx = s.p.x - from.x, dz = s.p.z - from.z;
+      const len = Math.hypot(dx, dz) || 1;
+      s.p.x = Math.min(BOUNDS.maxX, Math.max(BOUNDS.minX, s.p.x + dx / len * 5));
+      s.p.z = Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, s.p.z + dz / len * 5));
       target.current = null;
-      world.classList.remove("is-shaking"); void world.offsetWidth; world.classList.add("is-shaking");
-      pop(s.p.x, s.p.y - 6, s.lives > 0 ? say.current("Ouch!", "哎呀！") : "💫", "is-bad");
+      shake();
+      pop(s.p, s.lives > 0 ? say.current("Ouch!", "哎呀！") : "💫", "is-bad", 6);
       if (s.got) { s.got = false; setCarrying(false); setTangled(true); }
       if (s.lives <= 0) {
         s.done = true;
@@ -197,14 +240,14 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
       }
     }
 
-    function finish(w: number, h: number) {
+    function finish() {
       s.done = true;
       let length = 0;
-      let prev = pointOnRoute(stage, 0);
+      let prev = toWorld(pointOnRoute(stage, 0));
       for (let i = 1; i <= 20; i++) {
-        const q = pointOnRoute(stage, i / 20);
-        length += Math.hypot((q.x - prev.x) * w / 100, (q.y - prev.y) * h / 100);
-        prev = q;
+        const next = toWorld(pointOnRoute(stage, i / 20));
+        length += dist(prev, next);
+        prev = next;
       }
       const par = 3 + length / (stats.speed * .55) + layout.hearts.length * .35;
       const timeBonus = Math.max(0, Math.round((par - s.time) * 30));
@@ -216,57 +259,50 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
         hearts, totalHearts: layout.hearts.length, hits: s.hits, bonus: s.bonus,
         time: Math.round(s.time * 10) / 10, timeBonus, bestCombo: s.bestCombo,
       };
-      burst(goal.x, goal.y, "🎉");
+      burst(layout.goal, "🎉", 4);
       sfx.clear();
-      catEl.classList.remove("is-walking");
       setResult(r);
       phaseRef.current = "clear";
       setPhase("clear");
     }
 
-    function tick(time: number) {
-      const dt = Math.min((time - (last || time)) / 1000, .1);
-      last = time;
+    function tick(now: number) {
+      const dt = Math.min((now - (last || now)) / 1000, .1);
+      last = now;
       s.age += dt;
-      const w = world.clientWidth, h = world.clientHeight;
       const p = s.p;
       const playing = phaseRef.current === "play" && !s.done;
 
-      // Keepsake bobbing.
-      const bait = { x: layout.item.x, y: layout.item.y + Math.sin(s.age * 1.7) * Math.min(1.4, 650 / h) };
-      if (pickup.current) pickup.current.style.top = bait.y + "%";
-
-      // Hazards move whether or not the guest is moving.
       const hazardPos = layout.hazards.map((hz, i) => {
-        const phaseShift = i * 1.3;
-        let x = hz.home.x, y = hz.home.y;
-        if (hz.motion === "bob") y += Math.sin(s.age * hz.speed + phaseShift) * hz.amp / h * 100;
-        if (hz.motion === "sway") x += Math.sin(s.age * hz.speed + phaseShift) * hz.amp / w * 100;
+        const shift = i * 1.3;
+        let x = hz.home.x, z = hz.home.z;
+        if (hz.motion === "bob") z += Math.sin(s.age * hz.speed + shift) * hz.amp;
+        if (hz.motion === "sway") { x += Math.sin(s.age * hz.speed + shift) * hz.amp; s.chaseFace[i] = Math.cos(s.age * hz.speed + shift) < 0 ? -1 : 1; }
         if (hz.motion === "orbit") {
-          x += Math.cos(s.age * hz.speed + phaseShift) * hz.amp / w * 100;
-          y += Math.sin(s.age * hz.speed + phaseShift) * hz.amp / h * 100;
+          x += Math.cos(s.age * hz.speed + shift) * hz.amp;
+          z += Math.sin(s.age * hz.speed + shift) * hz.amp * .8;
+          s.chaseFace[i] = -Math.sin(s.age * hz.speed + shift) < 0 ? -1 : 1;
         }
         if (hz.motion === "chase") {
           const c = s.chase[i];
-          const toP = { x: (p.x - c.x) * w / 100, y: (p.y - c.y) * h / 100 };
-          const dist = Math.hypot(toP.x, toP.y);
-          const home = { x: (hz.home.x - c.x) * w / 100, y: (hz.home.y - c.y) * h / 100 };
-          const homeDist = Math.hypot(home.x, home.y);
-          let v = { x: 0, y: 0 };
-          if (playing && dist < hz.amp && s.shieldT <= 0) v = { x: toP.x / dist * hz.speed, y: toP.y / dist * hz.speed };
-          else if (playing && dist < hz.amp) v = { x: -toP.x / dist * hz.speed * .8, y: -toP.y / dist * hz.speed * .8 };
-          else if (homeDist > 2) v = { x: home.x / homeDist * hz.speed * .6, y: home.y / homeDist * hz.speed * .6 };
-          c.x += v.x * dt / w * 100;
-          c.y = clampY(c.y + v.y * dt / h * 100);
-          x = c.x; y = c.y;
-          hazardEls.current[i]?.style.setProperty("--face", v.x < 0 ? "-1" : "1");
+          const toP = { x: p.x - c.x, z: p.z - c.z };
+          const d = Math.hypot(toP.x, toP.z) || 1;
+          const home = { x: hz.home.x - c.x, z: hz.home.z - c.z };
+          const homeD = Math.hypot(home.x, home.z);
+          let v = { x: 0, z: 0 };
+          if (playing && d < hz.amp && s.shieldT <= 0) v = { x: toP.x / d * hz.speed, z: toP.z / d * hz.speed };
+          else if (playing && d < hz.amp) v = { x: -toP.x / d * hz.speed * .8, z: -toP.z / d * hz.speed * .8 };
+          else if (homeD > .3) v = { x: home.x / homeD * hz.speed * .6, z: home.z / homeD * hz.speed * .6 };
+          c.x += v.x * dt;
+          c.z = Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, c.z + v.z * dt));
+          if (Math.abs(v.x) > .1) s.chaseFace[i] = v.x < 0 ? -1 : 1;
+          x = c.x; z = c.z;
         }
-        const el = hazardEls.current[i];
-        if (el) { el.style.left = x + "%"; el.style.top = y + "%"; }
-        return { x, y };
+        return { x, z };
       });
+      const bait = layout.item;
 
-      let len = 0;
+      s.walking = false;
       if (playing) {
         s.time += dt;
         if (timeEl.current) timeEl.current.textContent = s.time.toFixed(1);
@@ -278,85 +314,102 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
         s.comboTimer = Math.max(0, s.comboTimer - dt);
         if (s.comboTimer === 0 && s.combo) { s.combo = 0; showCombo(); }
 
-        let dx = 0, dy = 0;
-        held.forEach((k) => { dx += directions[k].x; dy += directions[k].y; });
-        let speed = stats.speed * (s.speedT > 0 ? 1.45 : 1) * dt;
+        let dx = 0, dz = 0;
+        held.forEach((k) => { dx += directions[k].x; dz += directions[k].z; });
+        let step = stats.speed * (s.speedT > 0 ? 1.45 : 1) * dt;
         if (target.current) {
-          dx = (target.current.x - p.x) * w / 100;
-          dy = (target.current.y - p.y) * h / 100;
-          speed = Math.min(speed, Math.hypot(dx, dy));
-          if (speed < .05) target.current = null;
+          dx = target.current.x - p.x;
+          dz = target.current.z - p.z;
+          step = Math.min(step, Math.hypot(dx, dz));
+          if (step < .01) target.current = null;
         }
-        len = Math.hypot(dx, dy);
-        if (len) s.dir = { x: dx / len, y: dy / len };
+        let len = Math.hypot(dx, dz);
+        if (len) s.dir = { x: dx / len, z: dz / len };
         if (dashRequest.current) {
           dashRequest.current = false;
           if (s.dashCd <= 0) { s.dashT = .2; s.dashCd = 1.1; sfx.dash(); target.current = null; }
         }
-        if (s.dashT > 0) { dx = s.dir.x; dy = s.dir.y; len = 1; speed = stats.speed * 3 * dt; }
-        if (len) {
-          p.x = Math.min(98, Math.max(2, p.x + dx / len * speed / w * 100));
-          p.y = Math.min(88, Math.max(15, p.y + dy / len * speed / h * 100));
-          if (Math.abs(dx) > .01) catEl.style.setProperty("--face", dx < 0 ? "-1" : "1");
+        if (s.dashT > 0) { dx = s.dir.x; dz = s.dir.z; len = 1; step = stats.speed * 3 * dt; }
+        if (len && step > 0) {
+          p.x = Math.min(BOUNDS.maxX, Math.max(BOUNDS.minX, p.x + dx / len * step));
+          p.z = Math.min(BOUNDS.maxZ, Math.max(BOUNDS.minZ, p.z + dz / len * step));
+          if (Math.abs(dx) > .01) s.face = dx < 0 ? -1 : 1;
+          s.walking = true;
         }
 
-        const near = (q: Point, r: number) => Math.hypot((q.x - p.x) * w / 100, (q.y - p.y) * h / 100) < r;
-
+        const near = (q: Vec, r: number) => dist(q, p) < r;
         layout.hearts.forEach((heart, i) => {
           if (s.hearts[i] || !near(heart, stats.magnet)) return;
           s.hearts[i] = true;
-          heartEls.current[i]?.classList.add("is-taken");
+          w!.hideHeart(i);
           s.combo = Math.min(MAX_COMBO, s.combo + 1);
           s.bestCombo = Math.max(s.bestCombo, s.combo);
           s.comboTimer = 2.2;
           addScore(POINTS.heart * s.combo);
-          pop(heart.x, heart.y - 4, `+${POINTS.heart * s.combo}${s.combo > 1 ? " ×" + s.combo : ""}`);
-          burst(heart.x, heart.y, "♥");
+          pop(heart, `+${POINTS.heart * s.combo}${s.combo > 1 ? " ×" + s.combo : ""}`);
+          burst(heart, "♥");
           sfx.heart(s.combo);
           showCombo();
         });
         layout.powers.forEach((power, i) => {
-          if (s.powers[i] || !near(power, stats.magnet + 4)) return;
+          if (s.powers[i] || !near(power.pos, stats.magnet + .6)) return;
           s.powers[i] = true;
-          powerEls.current[i]?.classList.add("is-taken");
+          w!.hidePower(i);
           if (power.kind === "speed") s.speedT = 5; else s.shieldT = 6;
           addScore(POINTS.power);
-          pop(power.x, power.y - 4, power.kind === "speed" ? say.current("Speed up!", "加速！") : say.current("Shield!", "护盾！"), "is-power");
+          pop(power.pos, power.kind === "speed" ? say.current("Speed up!", "加速！") : say.current("Shield!", "护盾！"), "is-power");
           sfx.power();
         });
-        if (!s.bonus && near(layout.bonus, stats.magnet + 4)) {
+        if (!s.bonus && near(layout.bonus, stats.magnet + .6)) {
           s.bonus = true;
-          bonusEl.current?.classList.add("is-taken");
+          w!.hideBonus();
           addScore(POINTS.bonus);
-          pop(layout.bonus.x, layout.bonus.y - 4, `★ +${POINTS.bonus}`, "is-gold");
-          burst(layout.bonus.x, layout.bonus.y, "✦");
+          pop(layout.bonus, `★ +${POINTS.bonus}`, "is-gold");
+          burst(layout.bonus, "✦", 2);
           sfx.star();
         }
-        if (!s.got && near(bait, 34)) {
+        if (!s.got && near(bait, 3.4)) {
           s.got = true;
           setCarrying(true); setTangled(false); setHint(false);
           addScore(POINTS.keepsake);
-          pop(bait.x, bait.y - 5, `${icon} +${POINTS.keepsake}`, "is-gold");
+          pop(bait, `${icon} +${POINTS.keepsake}`, "is-gold");
           sfx.keepsake();
         }
         if (s.inv <= 0 && s.shieldT <= 0 && s.dashT <= 0) {
-          const struck = hazardPos.find((q) => near(q, 30));
-          if (struck) hit(struck, w, h);
+          const struck = hazardPos.find((q) => near(q, 2.8));
+          if (struck) hit(struck);
         }
-        if (!s.done && near(goal, 26)) {
-          if (s.got) finish(w, h);
+        if (!s.done && near(layout.goal, 3)) {
+          if (s.got) finish();
           else if (!s.hinted) { s.hinted = true; setHint(true); }
         } else s.hinted = false;
-
-        catEl.classList.toggle("is-hurt", s.inv > 0);
-        catEl.classList.toggle("is-shielded", s.shieldT > 0);
-        catEl.classList.toggle("is-fast", s.speedT > 0 || s.dashT > 0);
         if (dashEl.current) dashEl.current.style.setProperty("--cool", String(s.dashCd / 1.1));
       }
-      catEl.classList.toggle("is-walking", len > .1);
-      catEl.style.left = p.x + "%";
-      catEl.style.top = p.y + "%";
-      if (len || s.age < .1) viewport.scrollLeft = p.x * w / 100 - viewport.clientWidth / 2;
+
+      w!.frame({
+        dt,
+        camera: phaseRef.current === "intro" ? "overview" : "follow",
+        cat: { pos: p, face: s.face, walking: s.walking, hurt: s.inv > 0, shield: s.shieldT > 0, fast: s.speedT > 0 || s.dashT > 0, carrying: s.got },
+        hazards: hazardPos,
+        hazardFace: s.chaseFace,
+        itemVisible: !s.got,
+      });
+      if (process.env.NODE_ENV !== "production") {
+        // Test hook for automated play-throughs in development builds only.
+        (window as unknown as { __stageTargets?: unknown }).__stageTargets = {
+          item: s.got ? null : w!.project(layout.item, 0),
+          goal: w!.project(layout.goal, 0),
+          hearts: layout.hearts.filter((_, i) => !s.hearts[i]).map((h) => w!.project(h, 0)),
+          phase: phaseRef.current,
+        };
+      }
+      stops.forEach((stop, i) => {
+        const el = labelEls.current[i];
+        if (!el) return;
+        const at = w!.project(toWorld(stop), 0);
+        el.style.transform = `translate(${at.x}px, ${at.y}px)`;
+        el.style.visibility = at.visible ? "" : "hidden";
+      });
       frame = requestAnimationFrame(tick);
     }
 
@@ -371,14 +424,14 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
       window.removeEventListener("blur", blur);
       blur();
     };
-    // `t` and `stats` are derived from props already listed.
+    // `stats`, `icon` and `stops` are fixed for this stage.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paused, attempt, layout, stage]);
+  }, [paused, attempt, layout, stage, ready]);
 
-  function aim(e: React.PointerEvent<HTMLDivElement>) {
-    if (phaseRef.current !== "play") return;
-    const r = e.currentTarget.getBoundingClientRect();
-    target.current = { x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 };
+  function aim(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (phaseRef.current !== "play" || !world.current) return;
+    const at = world.current.pick(e.clientX, e.clientY);
+    if (at) target.current = at;
   }
 
   const objective = carrying
@@ -390,6 +443,21 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
     && !stageDefs.slice(0, stage).some((prev) => prev.hazards.some((x) => x.icon === hz.icon)));
 
   return <>
+    <canvas ref={canvas} className="game-canvas3d"
+      aria-label={t("3D map of our story. Move with WASD or the arrow keys, or press and drag on the map. Space to dash.", "3D 故事地图。用 WASD 或方向键移动，也可以在地图上按住拖动；空格键冲刺。")}
+      onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture?.(e.pointerId); aim(e); }}
+      onPointerMove={(e) => { if (dragging.current) aim(e); }}
+      onPointerUp={() => { dragging.current = false; }}
+      onPointerCancel={() => { dragging.current = false; }} />
+    <div className="game-layer" ref={layer} aria-hidden="true">
+      {stops.map((stop, i) => <div key={stop.key} className="game-label" ref={(el) => { labelEls.current[i] = el; }}
+        data-state={i < stage ? "done" : i === stage ? "current" : "next"}>
+        <span className="journey-stop-name">{i < stage ? "✓ " : `${i + 1} · `}{stop.title}</span>
+        {stars[i] !== undefined && <span className="game-pin-stars">{"★".repeat(stars[i]!)}{"☆".repeat(3 - stars[i]!)}</span>}
+      </div>)}
+    </div>
+    {noWebGL && <p className="game-nowebgl" role="alert">{t("Your browser can’t show the 3D map. Try another browser, or ask Maggie & Mayne for help with your RSVP.", "你的浏览器无法显示 3D 地图。请换一个浏览器试试，或直接联系 Maggie 和 Mayne 回复出席。")}</p>}
+
     <div className="game-topbar" role="status">
       <span className="game-stage"><i>{t("Stage", "关卡")} </i>{stage + 1}/6 · <b>{title}</b></span>
       <span className="game-lives" aria-label={t(`${lives} lives`, `${lives} 条命`)}>
@@ -399,28 +467,6 @@ export function StageGame({ stage, paused, zh, cat, catImg, title, start, goal, 
       <span className="game-time"><small>{t("Time", "时间")}</small><b ref={timeEl}>0.0</b></span>
       <span className="game-combo" ref={comboEl} aria-hidden="true" />
     </div>
-    <div className="journey-viewport"><div className="journey-board game-board" ref={board}
-      onPointerDown={(e) => { dragging.current = true; aim(e); }}
-      onPointerMove={(e) => { if (dragging.current) aim(e); }}
-      onPointerUp={() => { dragging.current = false; }}
-      onPointerCancel={() => { dragging.current = false; }}>
-      {children}
-      {layout.hearts.map((heart, i) => <span key={i} className="game-heart" aria-hidden="true"
-        ref={(el) => { heartEls.current[i] = el; }} style={{ left: heart.x + "%", top: heart.y + "%", animationDelay: i * .15 + "s" }}>♥</span>)}
-      <span className="game-bonus" ref={bonusEl} aria-hidden="true" style={{ left: layout.bonus.x + "%", top: layout.bonus.y + "%" }}>⭐</span>
-      {layout.powers.map((power, i) => <span key={i} className="game-power" aria-hidden="true" data-kind={power.kind}
-        ref={(el) => { powerEls.current[i] = el; }} style={{ left: power.x + "%", top: power.y + "%" }}>{power.kind === "speed" ? "🐟" : "🌿"}</span>)}
-      {layout.hazards.map((hz, i) => <div key={i} className="game-hazard" aria-hidden="true" data-motion={hz.motion}
-        ref={(el) => { hazardEls.current[i] = el; }} style={{ left: hz.home.x + "%", top: hz.home.y + "%" }}><span>{hz.icon}</span></div>)}
-      <button type="button" className="game-dock" aria-label={title} style={{ left: goal.x + "%", top: goal.y + "%" }}
-        onClick={(e) => { e.stopPropagation(); if (phase === "play") target.current = goal; }}>⚑</button>
-      {!carrying && <button type="button" className="game-item" ref={pickup} style={{ left: layout.item.x + "%", top: layout.item.y + "%" }}
-        aria-label={t(keepsakeEn, keepsakeZh)} onClick={(e) => { e.stopPropagation(); if (phase === "play") target.current = layout.item; }}>{icon}</button>}
-      <div className="journey-traveler" ref={sprite} style={{ left: start.x + "%", top: start.y + "%" }}>
-        <img alt="" className="journey-cat-art" src={catImg} />
-        {carrying && <span className="game-carry" aria-hidden="true">{icon}</span>}
-      </div>
-    </div></div>
     <div className="journey-map-footer game-hud" role="status">
       <div className="passport">{keepsakes.map(([symbol, name], i) => <span key={name} className={i < stage || (i === stage && carrying) ? "stamped" : ""}>{i <= stage ? symbol : "·"}</span>)}</div>
       <strong>{objective}</strong>

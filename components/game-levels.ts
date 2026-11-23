@@ -29,7 +29,13 @@ export function pointOnRoute(stage: number, t: number): Point {
 
 export const clampY = (y: number) => Math.min(86, Math.max(19, y));
 
+// The 3D world lies flat on the x/z plane: 1 unit = 1 % of the map's width, and the map is 75 % as deep as it is wide.
+export type Vec = { x: number; z: number };
+export const DEPTH = .75;
+export const toWorld = (p: Point): Vec => ({ x: p.x, z: p.y * DEPTH });
+
 export type HazardMotion = "bob" | "sway" | "orbit" | "chase";
+// amp: world units of travel (chase: how close you must be before it chases). speed: radians/s (chase: units/s).
 export type HazardDef = { icon: string; t: number; motion: HazardMotion; amp: number; speed: number; en: string; zh: string };
 export type PowerDef = { kind: "speed" | "shield"; t: number; off: number };
 export type StageDef = { hearts: number; hazards: HazardDef[]; powers: PowerDef[]; bonus: { t: number; off: number } };
@@ -39,31 +45,31 @@ const yarn = (t: number, motion: HazardMotion, amp: number, speed: number): Haza
 
 export const stageDefs: StageDef[] = [
   { hearts: 4, hazards: [], powers: [], bonus: { t: .5, off: -11 } },
-  { hearts: 6, hazards: [yarn(.58, "bob", 70, 1.7)], powers: [], bonus: { t: .3, off: 12 } },
+  { hearts: 6, hazards: [yarn(.58, "bob", 6, 1.7)], powers: [], bonus: { t: .3, off: 12 } },
   {
     hearts: 6,
-    hazards: [yarn(.33, "sway", 75, 1.5), { icon: "🦀", t: .72, motion: "sway", amp: 50, speed: 3, en: "crab", zh: "螃蟹" }],
+    hazards: [yarn(.33, "sway", 6.5, 1.5), { icon: "🦀", t: .72, motion: "sway", amp: 4.5, speed: 3, en: "crab", zh: "螃蟹" }],
     powers: [{ kind: "speed", t: .52, off: 9 }],
     bonus: { t: .6, off: -14 },
   },
   {
     hearts: 7,
-    hazards: [{ icon: "🕊️", t: .45, motion: "orbit", amp: 75, speed: 1.9, en: "pigeon", zh: "鸽子" }, yarn(.8, "bob", 60, 2.2)],
+    hazards: [{ icon: "🕊️", t: .45, motion: "orbit", amp: 6, speed: 1.9, en: "pigeon", zh: "鸽子" }, yarn(.8, "bob", 5, 2.2)],
     powers: [{ kind: "shield", t: .28, off: -9 }],
     bonus: { t: .55, off: 13 },
   },
   {
     hearts: 7,
-    hazards: [{ icon: "🤖", t: .55, motion: "chase", amp: 260, speed: 80, en: "robot vacuum", zh: "扫地机器人" }, yarn(.25, "sway", 70, 2)],
+    hazards: [{ icon: "🤖", t: .55, motion: "chase", amp: 22, speed: 8, en: "robot vacuum", zh: "扫地机器人" }, yarn(.25, "sway", 6, 2)],
     powers: [{ kind: "speed", t: .72, off: -9 }],
     bonus: { t: .4, off: -14 },
   },
   {
     hearts: 8,
     hazards: [
-      { icon: "🤖", t: .6, motion: "chase", amp: 280, speed: 92, en: "robot vacuum", zh: "扫地机器人" },
-      yarn(.35, "bob", 70, 2.3),
-      { icon: "🦭", t: .84, motion: "sway", amp: 55, speed: 2.6, en: "sea lion", zh: "海狮" },
+      { icon: "🤖", t: .6, motion: "chase", amp: 24, speed: 9.3, en: "robot vacuum", zh: "扫地机器人" },
+      yarn(.35, "bob", 6, 2.3),
+      { icon: "🦭", t: .84, motion: "sway", amp: 5, speed: 2.6, en: "sea lion", zh: "海狮" },
     ],
     powers: [{ kind: "shield", t: .46, off: 10 }],
     bonus: { t: .7, off: 12 },
@@ -76,8 +82,8 @@ export const keepsakes = [
 ] as const;
 
 export const cats = {
-  bride: { speed: 285, magnet: 30, stats: { speed: 5, magnet: 3, dash: 4 } },
-  groom: { speed: 235, magnet: 48, stats: { speed: 3, magnet: 5, dash: 4 } },
+  bride: { speed: 17, magnet: 3.2, stats: { speed: 5, magnet: 3, dash: 4 } },
+  groom: { speed: 14, magnet: 5, stats: { speed: 3, magnet: 5, dash: 4 } },
 } as const;
 
 export const POINTS = { heart: 100, keepsake: 300, bonus: 500, power: 50, noHit: 250 } as const;

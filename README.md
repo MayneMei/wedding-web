@@ -137,6 +137,7 @@ The portable build runs Vinext directly without a host `timeout` command. The ma
 The guest flow (`components/wedding.tsx`) is a 6-stage game: title screen → cat select → one stage per stop on our story map → results.
 
 - `components/stage-game.tsx` — the stage engine (movement, dash, hearts/combos, keepsake delivery, hazards, power-ups, lives, star rating).
+- `components/world3d.ts` — the three.js "paper diorama": the hand-drawn stickers and cats stand up as billboards on a 3D paper map with toon-shaded, outlined props. It is lazy-loaded when a stage starts, so the title screen stays light.
 - `components/game-levels.ts` — level design: route geometry, per-stage hazards/power-ups, scoring, ranks and achievements. Tune difficulty here.
 - `components/game-audio.ts` — synthesized chiptune SFX and music (no audio files); guests can mute it.
 - `components/game.css` — game UI styles.

@@ -365,3 +365,41 @@
   .game-board.is-shaking { animation: none; }
 }
 @media (pointer: coarse) { .game-dash small { display: none; } }
+
+/* ---------- 3D diorama ---------- */
+.game-canvas3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+  outline: none;
+}
+.game-canvas3d.is-shaking { animation: game-shake .35s; }
+.game-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+.game-layer .game-pop, .game-layer .game-spark { position: absolute; transform: translate(-50%, -50%); }
+.game-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  translate: -50% 16px;
+  will-change: transform;
+}
+.game-label .journey-stop-name { font: 700 clamp(13px, 1.3vw, 17px)/1.1 Georgia, serif; color: var(--ink); }
+.game-label[data-state="current"] .journey-stop-name { border-color: var(--pink); color: #843a54; background: #fff4ca; box-shadow: 0 0 0 3px #f1cb6d88, 2px 3px 0 #916a1831; }
+.game-label[data-state="done"] .journey-stop-name { opacity: .85; }
+.game-nowebgl {
+  position: absolute;
+  inset: 40% 16px auto;
+  z-index: 5;
+  background: #fffdf6;
+  border: 2px solid var(--pink);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}

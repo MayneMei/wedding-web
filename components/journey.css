@@ -371,13 +371,13 @@
   left: 50%;
   bottom: 0;
   translate: -50% 0;
-  height: min(78svh, 64vw);
+  height: min(72svh, 59vw);
   width: auto;
   max-width: none;
   /* Melt the illustration into the page: soft top edge (where the heart is cropped) and soft sides. */
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 16%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 7%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
   -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to bottom, transparent, #000 16%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 7%), linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
   mask-composite: intersect;
   animation: welcome-art-in 1.2s cubic-bezier(.2, .7, .2, 1) both;
 }
@@ -401,7 +401,7 @@
 .journey-root .welcome-note h1 {
   margin: 0;
   color: var(--pink);
-  font-size: clamp(64px, 8.4vw, 124px);
+  font-size: clamp(60px, 7.6vw, 112px);
   line-height: .95;
   letter-spacing: -.01em;
   white-space: nowrap;
@@ -467,11 +467,11 @@
   /* On phones the art is wider than the screen: size it so both cats stay in view, and fade its bottom
      edge into the page under the button. */
   .welcome-art {
-    top: clamp(150px, 22svh, 196px);
+    top: clamp(176px, 25svh, 222px);
     bottom: auto;
-    height: min(109vw, 52svh);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
-    mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 84%, transparent);
+    height: min(109vw, 50svh);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 84%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 84%, transparent);
   }
   .journey-root .welcome-note h1 { font-size: clamp(46px, 13.5vw, 64px); }
   .welcome-kicker { font-size: 11px; letter-spacing: .22em; }

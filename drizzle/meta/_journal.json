@@ -15,6 +15,13 @@
       "when": 1795407051153,
       "tag": "0001_hard_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795412321855,
+      "tag": "0002_game_scores",
+      "breakpoints": true
     }
   ]
 }

@@ -1,9 +1,9 @@
 import { env } from "cloudflare:workers";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDb } from "@/db";
-import { invitations, weddingSettings } from "@/db/schema";
+import { gameScores, invitations, weddingSettings } from "@/db/schema";
 import { defaultSettings, emptyCompanion } from "./wedding-shared";
 
 export const answerSchema = z.object({
@@ -176,4 +176,48 @@ export async function writeReply(row: Record, data: z.infer<typeof replySchema>,
     .returning();
   if (!updated) return { error: "conflict" as const };
   return { updated };
+}
+
+// ---------- Road-trip game leaderboard ----------
+export const scoreSchema = z.object({
+  score: z.number().int().min(0).max(60000),
+  stars: z.number().int().min(0).max(18),
+  cat: z.enum(["bride", "groom"]),
+});
+
+export type LeaderboardEntry = { name: string; score: number; stars: number; cat: "bride" | "groom"; you?: boolean };
+
+// Show only a first name (or a short prefix) on the public board.
+function boardName(row: Record) {
+  const full = (row.journey?.name || row.guests[0]?.name || row.groupName).trim();
+  const first = full.split(/\s+/)[0] ?? full;
+  return Array.from(first).slice(0, 14).join("");
+}
+
+export async function saveScore(row: Record, data: z.infer<typeof scoreSchema>) {
+  const now = new Date().toISOString();
+  const db = getDb();
+  await db.insert(gameScores)
+    .values({ invitationId: row.id, name: boardName(row), score: data.score, stars: data.stars, cat: data.cat, updatedAt: now })
+    .onConflictDoUpdate({
+      target: gameScores.invitationId,
+      set: {
+        name: boardName(row),
+        score: sql`max(${gameScores.score}, excluded.score)`,
+        stars: sql`max(${gameScores.stars}, excluded.stars)`,
+        cat: sql`case when excluded.score >= ${gameScores.score} then excluded.cat else ${gameScores.cat} end`,
+        updatedAt: now,
+      },
+    });
+  const [mine] = await db.select().from(gameScores).where(eq(gameScores.invitationId, row.id));
+  const [{ ahead }] = await db.select({ ahead: sql<number>`count(*)` }).from(gameScores).where(gt(gameScores.score, mine.score));
+  return { best: mine.score, rank: Number(ahead) + 1 };
+}
+
+export async function leaderboard(limit = 10, invitationId?: string): Promise<LeaderboardEntry[]> {
+  const rows = await getDb().select().from(gameScores).orderBy(desc(gameScores.score), asc(gameScores.updatedAt)).limit(limit);
+  return rows.map((row) => ({
+    name: row.name, score: row.score, stars: row.stars, cat: row.cat === "groom" ? "groom" : "bride",
+    ...(invitationId && row.invitationId === invitationId ? { you: true } : {}),
+  }));
 }

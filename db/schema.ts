@@ -19,6 +19,15 @@ export const weddingSettings = sqliteTable("wedding_settings", {
   settings: text("settings", { mode: "json" }).$type<WeddingSettings>().notNull(),
 });
 
+export const gameScores = sqliteTable("game_scores", {
+  invitationId: text("invitation_id").primaryKey(),
+  name: text("name").notNull(),
+  score: integer("score").notNull(),
+  stars: integer("stars").notNull(),
+  cat: text("cat").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export type Status = "pending" | "yes" | "no";
 export type GuestAnswer = { status: Status; dietary: string };
 export type StoredGuest = GuestAnswer & { name: string };

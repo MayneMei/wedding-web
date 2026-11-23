@@ -131,3 +131,14 @@ The portable build runs Vinext directly without a host `timeout` command. The ma
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)
 - [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+
+## Wedding road-trip game
+
+The guest flow (`components/wedding.tsx`) is a 6-stage game: title screen → cat select → one stage per stop on our story map → results.
+
+- `components/stage-game.tsx` — the stage engine (movement, dash, hearts/combos, keepsake delivery, hazards, power-ups, lives, star rating).
+- `components/game-levels.ts` — level design: route geometry, per-stage hazards/power-ups, scoring, ranks and achievements. Tune difficulty here.
+- `components/game-audio.ts` — synthesized chiptune SFX and music (no audio files); guests can mute it.
+- `components/game.css` — game UI styles.
+- Leaderboard: `game_scores` table (`drizzle/0002_game_scores.sql`), `POST /api/score/:token` (keeps each invitation's best run) and `GET /api/leaderboard` (top 10, first names only). Guests who play from their invitation link are added automatically; `/demo` and link-less visitors can view but not post.
+- After finishing, guests can replay in "score attack" mode, which skips the RSVP forms and never changes their RSVP.
